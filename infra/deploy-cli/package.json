@@ -1,0 +1,11 @@
+{
+  "name": "pharma-deployer",
+  "version": "1.0.0",
+  "description": "Soroban Contract Deployer Helper",
+  "main": "deploy.js",
+  "type": "module",
+  "dependencies": {
+    "@stellar/stellar-sdk": "^16.1.0",
+    "dotenv": "^16.4.5"
+  }
+}

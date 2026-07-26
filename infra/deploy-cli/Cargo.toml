@@ -1,0 +1,9 @@
+[package]
+name = "deploy-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.30", features = ["full"] }
+anyhow = "1.0"
+dotenvy = "0.15"
