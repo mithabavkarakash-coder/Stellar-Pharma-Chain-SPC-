@@ -1,0 +1,21 @@
+[package]
+name = "pharma-backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.7", features = ["ws"] }
+tokio = { version = "1.30", features = ["full"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "sqlite"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+stellar-xdr = { version = "21.0.0", features = ["base64"] }
+stellar-strkey = "0.0.16"
+tower-http = { version = "0.5", features = ["cors", "fs"] }
+dotenvy = "0.15"
+reqwest = { version = "0.11", features = ["json"] }
+futures-util = "0.3"
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"

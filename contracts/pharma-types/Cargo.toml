@@ -1,0 +1,12 @@
+[package]
+name = "pharma-types"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+soroban-sdk = "26.1.0"
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[features]
+default = []
+serde = ["dep:serde"]
