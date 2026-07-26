@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = [
+    "contracts/pharma-types",
+    "contracts/batch-registry",
+    "contracts/custody-chain",
+    "backend",
+    "infra/deploy-cli",
+]
+
+[profile.release]
+opt-level = "z"     # Optimize for size
+overflow-checks = true # Enforce arithmetic overflow checks
+strip = true        # Strip symbols to minimize WASM size
+lto = true          # Link Time Optimization
+codegen-units = 1
