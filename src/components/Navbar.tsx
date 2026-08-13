@@ -50,7 +50,7 @@ export default function Navbar({
                 <div className="app-container navbar-inner">
                     <Link href="/" className="navbar-brand">
                         <Activity className="brand-icon" style={{ stroke: "#10b981", width: 28, height: 28 }} />
-                        <span>MedChain</span>
+                        <span>Stellar Pharma Chain</span>
                     </Link>
 
                     <div className="navbar-right">

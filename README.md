@@ -5,11 +5,24 @@
 [![Rust](https://img.shields.io/badge/Backend-Rust%20%2F%20Axum-black?style=for-the-badge&logo=rust)](https://www.rust-lang.org)
 [![SQLite](https://img.shields.io/badge/Database-SQLite-003b57?style=for-the-badge&logo=sqlite)](https://sqlite.org)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://stellar-pharma-chain-spc-rhfo.vercel.app/)
+[![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 An enterprise-grade, trustless pharmaceutical supply chain tracking and cryptographic verification platform powered by **Stellar / Soroban Smart Contracts**. SPC protects patients and distributors from counterfeit drugs by establishing an immutable, verifiable custody chain (Manufacturer ➡️ Distributor ➡️ Pharmacy) and capturing real-time cold-chain telemetry.
 
 > [!TIP]
 > **🚀 Live Web Application**: Access the deployed platform at **[stellar-pharma-chain-spc-rhfo.vercel.app](https://stellar-pharma-chain-spc-rhfo.vercel.app/)**
+
+---
+
+## 💡 Key Features & Value Propositions
+
+- **🔒 Immutable On-Chain Provenance**: Smart contracts enforce complete origin tracking from licensed pharmaceutical manufacturers to end-point pharmacies.
+- **❄️ Real-Time Cold-Chain Telemetry**: Continuous logging of temperature, humidity, and location updates during transit with automated breach threshold detection.
+- **🚨 Instant Cryptographic Recalls**: Emergency recall execution by verified manufacturers immediately freezes downstream custody movements across all nodes.
+- **📱 Secure QR Code Authentication**: Instant verification scanning interface for inspectors, retailers, and patients to check batch legitimacy, timestamps, and recall status.
+- **⚡ High-Performance Event Indexer**: Custom Rust & Axum indexer continuously syncs Soroban ledger state into SQLite with WebSocket event streaming for instant UI updates.
+- **👥 Role-Based Access Control**: Tailored portals and simulated ledger accounts for **Manufacturers**, **Distributors**, **Pharmacies**, and **Inspectors**.
 
 ---
 
@@ -65,35 +78,78 @@ Configure Freighter or custom Stellar wallets, manage network credentials, view 
 
 ---
 
-## ⚙️ Architecture & Component Overview
+## ⚙️ Architecture & System Topology
 
-SPC is split into three main modules orchestrated within a single Cargo workspace:
+SPC is orchestrated across three main layers within a workspace architecture:
 
 ```mermaid
 graph TD
-    A[Freighter / User Wallet] -->|Transactions| B[Stellar Testnet / Soroban]
-    C[Rust Indexer Worker] -->|Polls Events| B
-    C -->|Caches state| D[(SQLite DB)]
-    E[Rust Axum API] -->|Reads| D
-    F[Next.js Web App] -->|HTTPS Requests| E
-    F -->|WebSocket Events| E
-    F -->|Interacts| A
+    subgraph Client ["Client Layer"]
+        A[Next.js 15 Web Portal]
+        B[Freighter Wallet Extension]
+        A <-->|Sign & Submit| B
+    end
+
+    subgraph Ledger ["Blockchain Layer"]
+        C[Stellar Testnet / Soroban]
+        D[batch-registry Smart Contract]
+        E[custody-chain Smart Contract]
+        C --- D
+        C --- E
+    end
+
+    subgraph Backend ["Indexer & API Layer"]
+        F[Rust Axum Web Server]
+        G[Soroban Event Indexer Daemon]
+        H[(SQLite Caching DB)]
+        G -->|Poll XDR Events| C
+        G -->|Store State| H
+        F -->|Query State| H
+        F <-->|WebSocket Stream| A
+    end
+
+    A <-->|HTTPS API / JSON| F
 ```
 
 ### 1. Smart Contracts (`contracts/`)
 Written in Rust using the Soroban SDK.
-*   **`batch-registry`**: Manages drug batch metadata (name, manufacturer, expiry, status, recall flags).
-*   **`custody-chain`**: Tracks the movement of drug quantities between cryptographic addresses and ensures strict checks (preventing expired transfers, enforcing manufacturer recalls).
-*   **`pharma-types`**: Shared types, structs, and enums representing participants (`Manufacturer`, `Distributor`, `Pharmacy`, `Patient`).
+* **`batch-registry`**: Manages drug batch metadata (name, manufacturer, expiry timestamp, total quantity, recall flags).
+* **`custody-chain`**: Tracks movement of drug quantities between cryptographic addresses, validating handovers and enforcing custody constraints.
+* **`pharma-types`**: Shared data types, error definitions, and participant roles (`Manufacturer`, `Distributor`, `Pharmacy`, `Patient`).
 
-### 2. Backend API & Indexer (`backend/`)
-Built with Rust, Axum, and Sqlx.
-*   **Background Indexer**: Continuously monitors the Soroban RPC for events emitted by the contracts, parses XDR, and caches custody/telemetry logs locally in SQLite.
-*   **Axum Web API**: Serves JSON APIs for fast frontend queries (avoiding slow RPC lookups for historical traces).
-*   **WebSockets**: Broadcasts real-time events (e.g. new registrations, transfers, and recalls) to the connected web clients.
+### 2. Backend Indexer & API (`backend/`)
+Built with Rust, Axum, SQLx, and Tokio.
+* **Soroban Indexer Daemon**: Continuously polls Soroban RPC event logs, decodes ledger XDR, and indexes batch registrations, transfers, and cold-chain sensor events into SQLite.
+* **Axum REST API**: Provides fast query endpoints for historical traces, batch lookup, and system statistics without overloading Soroban RPC nodes.
+* **WebSocket Engine**: Streams live network activity, alert notifications, and batch state changes directly to connected web clients.
 
-### 3. Frontend Portal (`frontend/`)
-A Next.js 15 single-page application styled using modern dark-mode CSS tokens, supporting interactive charts, real-time alert logs, and role simulations.
+### 3. Frontend Application (`frontend/`)
+Built with Next.js 15 (App Router), TypeScript, Vanilla CSS design tokens, Lucide React icons, and `@stellar/freighter-api`.
+
+---
+
+## 📜 Smart Contract Methods
+
+| Contract | Function | Parameters | Description |
+| :--- | :--- | :--- | :--- |
+| `batch-registry` | `mint_batch` | `batch_id`, `drug_name`, `mfg_date`, `expiry_date`, `quantity` | Mints a new pharmaceutical batch on-chain |
+| `batch-registry` | `trigger_recall` | `batch_id`, `reason` | Halts all custody movements for a batch |
+| `batch-registry` | `get_batch` | `batch_id` | Returns batch metadata & current recall status |
+| `custody-chain` | `transfer_custody` | `batch_id`, `to_address`, `quantity`, `location` | Transfers custody of drug units to next partner |
+| `custody-chain` | `log_telemetry` | `batch_id`, `temp_celsius`, `humidity` | Logs real-time cold-chain sensor reading |
+| `custody-chain` | `get_history` | `batch_id` | Returns complete chain-of-custody transfer history |
+
+---
+
+## 🔌 API Endpoints Summary
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/batches` | Retrieve all registered pharmaceutical batches |
+| `GET` | `/api/batches/:id` | Fetch specific batch details & custody logs |
+| `GET` | `/api/alerts` | Fetch recent security alerts & temperature excursion warnings |
+| `GET` | `/api/health` | Healthcheck endpoint for indexer & database status |
+| `WS` | `/ws` | WebSocket endpoint for real-time telemetry & event streaming |
 
 ---
 
@@ -102,58 +158,67 @@ A Next.js 15 single-page application styled using modern dark-mode CSS tokens, s
 ### Prerequisites
 Make sure you have the following installed on your system:
 - **Node.js** (v18+) & npm
-- **Rust** (stable toolchain)
-- **Stellar CLI** (to target local Soroban environments if needed)
+- **Rust** (stable toolchain with `wasm32v1-none` or `wasm32-unknown-unknown` target)
+- **Stellar CLI** or Node-based deployment dependencies
+
+```bash
+# Add WebAssembly target for Rust
+rustup target add wasm32-unknown-unknown
+```
 
 ---
 
 ### Step 1: Deploy Smart Contracts
-We use a Node-based deploy CLI helper that builds the WASM bytecode, deploys to Stellar Testnet, and generates the necessary configurations automatically.
+Run the deployment orchestrator directly from the workspace root:
 
-1. Install the CLI dependencies and deploy the contract:
-   ```bash
-   # Run the deployment orchestrator directly from the workspace root
-   cargo run -p deploy-cli
-   ```
-2. The orchestrator will output the contract IDs into a `.env` file at the root.
+```bash
+cargo run -p deploy-cli
+```
+This builds the Soroban WASM artifacts, deploys them to the Stellar Testnet, initializes contract states, and generates `.env` configurations automatically.
 
 ---
 
-### Step 2: Start the Backend API
-The Rust backend runs the event indexer and the HTTP/WebSocket server.
+### Step 2: Start the Rust Backend & Indexer
 
-1. Navigate to the backend directory and configure the environment (if not automatically created):
-   ```bash
-   cd backend
-   # Start the Rust application
-   cargo run
-   ```
-2. The backend will initialize the SQLite database (`pharma.db`), run migrations, and start listening on `http://localhost:8080`.
+```bash
+cd backend
+cargo run
+```
+The backend initializes SQLite (`pharma.db`), applies database migrations, starts polling Soroban Testnet events, and exposes HTTP/WS endpoints at `http://localhost:8080`.
 
 ---
 
-### Step 3: Launch the Frontend
-1. Navigate to the frontend directory:
-   ```bash
-   cd ../frontend
-   npm install
-   ```
-2. Run the Next.js development server:
-   ```bash
-   npm run dev
-   ```
-3. Open [http://localhost:3000](http://localhost:3000) in your browser.
+### Step 3: Launch the Next.js Frontend
+
+```bash
+cd ../frontend
+npm install
+npm run dev
+```
+Open **[http://localhost:3000](http://localhost:3000)** in your browser to access the control center.
 
 ---
 
-## 🔒 Security Features & Rules
+## 🔒 Security Guarantees & Enforcement Rules
 
 > [!IMPORTANT]
-> **Expiry Enforcements**: The `custody-chain` contract queries the ledger timestamp. Any attempt to transfer or register an expired batch will trigger an immediate transaction revert.
+> **Expiry Enforcements**: Smart contracts inspect current ledger timestamps. Attempts to transfer or register an expired batch trigger an immediate on-chain transaction revert.
 
 > [!WARNING]
-> **Emergency Recalls**: Once a manufacturer recalls a batch, the `batch-registry` updates the on-chain recall status. All downstream custody movements for that batch ID are immediately frozen.
+> **Emergency Recalls**: When a manufacturer triggers a recall on `batch-registry`, custody transfers on `custody-chain` for that batch ID are permanently locked.
 
 > [!NOTE]
-> **Cold-Chain Telemetry**: Every transit transition logs temperature records. If temperature limits are exceeded, the indexer issues a system-wide WebSocket alert for quality checkups.
-n medical & logistical imagery.
+> **Cold-Chain Threshold Detection**: Sensor logs exceeding safe temperature limits (e.g. 2°C - 8°C range) emit automated WebSocket alert warnings for quality control audit.
+
+---
+
+## 🌐 Deployment Overview
+
+- **Frontend Hosting**: Deployed on **Vercel** with Next.js App Router preset. (See [DEPLOYMENT.md](file:///DEPLOYMENT.md) for step-by-step guidance).
+- **Backend Hosting**: Designed for containerized deployment on **Fly.io**, **Render**, or **AWS** with persistent SQLite volume storage.
+
+---
+
+## 📄 License
+
+Distributed under the MIT License.

@@ -3,8 +3,8 @@ import "./globals.css";
 import { WalletProvider } from "../context/WalletContext";
 
 export const metadata: Metadata = {
-  title: "MedChain | On-Chain Pharma Supply Chain Verification",
-  description: "End-to-end drug batch traceability and authenticity verification platform built on Stellar and Soroban.",
+  title: "Stellar Pharma Chain (SPC) | On-Chain Pharmaceutical Verification",
+  description: "Enterprise-grade, trustless pharmaceutical supply chain tracking and cryptographic verification platform built on Stellar and Soroban.",
 };
 
 export default function RootLayout({
