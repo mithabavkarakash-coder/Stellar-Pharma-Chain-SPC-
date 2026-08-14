@@ -132,12 +132,16 @@ Built with Next.js 15 (App Router), TypeScript, Vanilla CSS design tokens, Lucid
 
 | Contract | Function | Parameters | Description |
 | :--- | :--- | :--- | :--- |
-| `batch-registry` | `mint_batch` | `batch_id`, `drug_name`, `mfg_date`, `expiry_date`, `quantity` | Mints a new pharmaceutical batch on-chain |
-| `batch-registry` | `trigger_recall` | `batch_id`, `reason` | Halts all custody movements for a batch |
-| `batch-registry` | `get_batch` | `batch_id` | Returns batch metadata & current recall status |
-| `custody-chain` | `transfer_custody` | `batch_id`, `to_address`, `quantity`, `location` | Transfers custody of drug units to next partner |
-| `custody-chain` | `log_telemetry` | `batch_id`, `temp_celsius`, `humidity` | Logs real-time cold-chain sensor reading |
-| `custody-chain` | `get_history` | `batch_id` | Returns complete chain-of-custody transfer history |
+| `batch-registry` | `register_batch` | `batch_id`, `drug_name`, `mfg_date`, `expiry_date`, `quantity`, `direct_ship` | Mints a new pharmaceutical batch on-chain |
+| `batch-registry` | `flag_quarantine` | `batch_id`, `reason` | Places batch under quarantine hold, halting transfers |
+| `batch-registry` | `release_quarantine` | `batch_id` | Releases batch from quarantine hold |
+| `batch-registry` | `flag_recalled` | `batch_id` | Permanently revokes custody transfers for recalled batch |
+| `batch-registry` | `set_paused` | `paused` | Admin circuit breaker to pause all contract activity |
+| `batch-registry` | `propose_admin` / `claim_admin` | `new_admin` | Secure 2-step admin ownership handover |
+| `custody-chain` | `transfer_custody` | `batch_id`, `from`, `to`, `quantity`, `to_role` | Transfers custody of drug units to next partner |
+| `custody-chain` | `log_telemetry` | `batch_id`, `temp_scaled`, `humidity_percent` | Logs real-time IoT cold-chain telemetry & excursion alerts |
+| `custody-chain` | `dispense_units` | `batch_id`, `pharmacy`, `quantity` | Dispenses units to patient, updating pharmacy stock balance |
+
 
 ---
 

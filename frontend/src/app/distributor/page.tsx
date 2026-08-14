@@ -213,6 +213,74 @@ export default function DistributorPortal() {
                             </form>
                         </div>
 
+                        {/* Cold-Chain Telemetry Logger Card */}
+                        <div className="glass-card">
+                            <h2 style={{ fontSize: "1.25rem", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
+                                <Truck style={{ stroke: "#10b981" }} />
+                                <span>Log Cold-Chain Telemetry</span>
+                            </h2>
+                            <form onSubmit={async (e) => {
+                                e.preventDefault();
+                                if (!wallet.address || !batchId) return;
+                                try {
+                                    setLoading(true);
+                                    const { logTelemetryOnChain } = await import("../../utils/soroban");
+                                    const hash = await logTelemetryOnChain(wallet.address, batchId, 4.5, 55);
+                                    setTxHash(hash);
+                                } catch (err: any) {
+                                    setError(err.message || "Failed to log telemetry");
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}>
+                                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: 16 }}>
+                                    Record real-time IoT probe readings (Temperature & Humidity) to trigger automated cold-chain compliance events.
+                                </p>
+                                <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-secondary" 
+                                        style={{ flex: 1, fontSize: "0.8rem", padding: "8px" }}
+                                        onClick={async () => {
+                                            if (!wallet.address || !batchId) return;
+                                            try {
+                                                setLoading(true);
+                                                const { logTelemetryOnChain } = await import("../../utils/soroban");
+                                                const hash = await logTelemetryOnChain(wallet.address, batchId, 4.5, 52);
+                                                setTxHash(hash);
+                                            } catch (err: any) {
+                                                setError(err.message || "Failed to log telemetry");
+                                            } finally {
+                                                setLoading(false);
+                                            }
+                                        }}
+                                    >
+                                        🌡️ 4.5°C (Compliant)
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-danger" 
+                                        style={{ flex: 1, fontSize: "0.8rem", padding: "8px" }}
+                                        onClick={async () => {
+                                            if (!wallet.address || !batchId) return;
+                                            try {
+                                                setLoading(true);
+                                                const { logTelemetryOnChain } = await import("../../utils/soroban");
+                                                const hash = await logTelemetryOnChain(wallet.address, batchId, 9.8, 78);
+                                                setTxHash(hash);
+                                            } catch (err: any) {
+                                                setError(err.message || "Failed to log telemetry");
+                                            } finally {
+                                                setLoading(false);
+                                            }
+                                        }}
+                                    >
+                                        🚨 9.8°C (Excursion)
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
                         {/* Received Batches Inventory */}
                         <div className="glass-card">
                             <div className="flex-between" style={{ marginBottom: 20 }}>

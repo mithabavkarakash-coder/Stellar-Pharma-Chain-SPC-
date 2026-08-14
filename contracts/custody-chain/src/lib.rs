@@ -11,6 +11,15 @@ pub enum DataKey {
     Custody(Symbol, Address),
 }
 
+const PERSISTENT_BUMP_THRESHOLD: u32 = 100_000;
+const PERSISTENT_BUMP_LEDGERS: u32 = 500_000;
+
+fn extend_ttl_if_exists(env: &Env, key: &DataKey) {
+    if env.storage().persistent().has(key) {
+        env.storage().persistent().extend_ttl(key, PERSISTENT_BUMP_THRESHOLD, PERSISTENT_BUMP_LEDGERS);
+    }
+}
+
 #[contract]
 pub struct CustodyChain;
 
@@ -22,6 +31,7 @@ impl CustodyChain {
             panic!("Already initialized");
         }
         env.storage().persistent().set(&DataKey::Registry, &registry);
+        extend_ttl_if_exists(&env, &DataKey::Registry);
     }
 
     /// Initializes custody for a new batch. Called ONLY by the Batch Registry contract.
@@ -32,7 +42,6 @@ impl CustodyChain {
         manufacturer: Address,
         quantity: u32,
     ) {
-        // Enforce explicit authorization from the registry contract
         registry.require_auth();
 
         let stored_registry: Address = env
@@ -41,7 +50,6 @@ impl CustodyChain {
             .get(&DataKey::Registry)
             .expect("Contract not initialized");
 
-        // Verify the caller registry matches our registered address
         if registry != stored_registry {
             panic!("Access denied: only registry can initialize custody");
         }
@@ -53,10 +61,43 @@ impl CustodyChain {
         };
 
         env.storage().persistent().set(&key, &state);
+        extend_ttl_if_exists(&env, &key);
+    }
+
+    /// Logs cold-chain sensor telemetry (temperature scaled x10, e.g. 55 = 5.5°C, and relative humidity percentage).
+    pub fn log_telemetry(
+        env: Env,
+        batch_id: Symbol,
+        reporter: Address,
+        temp_scaled: i32,
+        humidity_percent: u32,
+    ) {
+        reporter.require_auth();
+
+        let key = DataKey::Custody(batch_id.clone(), reporter.clone());
+        extend_ttl_if_exists(&env, &key);
+
+        if !env.storage().persistent().has(&key) {
+            panic!("Reporter does not hold active custody balance for this batch");
+        }
+
+        // Standard cold-chain range for pharmaceuticals: 2.0°C to 8.0°C (20 to 80 scaled)
+        let is_excursion = temp_scaled < 20 || temp_scaled > 80;
+
+        env.events().publish(
+            (Symbol::new(&env, "telemetry_logged"), batch_id.clone()),
+            (reporter.clone(), temp_scaled, humidity_percent, is_excursion),
+        );
+
+        if is_excursion {
+            env.events().publish(
+                (Symbol::new(&env, "excursion_alert"), batch_id),
+                (reporter, temp_scaled, humidity_percent),
+            );
+        }
     }
 
     /// Transfers a portion or the entirety of a batch to another custodian.
-    /// Performs a cross-contract call to the Batch Registry to verify batch validity, expiry, and recall state.
     pub fn transfer_custody(
         env: Env,
         batch_id: Symbol,
@@ -65,7 +106,6 @@ impl CustodyChain {
         quantity: u32,
         to_role: Role,
     ) {
-        // Authenticate the sender
         from.require_auth();
 
         if from == to {
@@ -81,34 +121,35 @@ impl CustodyChain {
             .get(&DataKey::Registry)
             .expect("Contract not initialized");
 
-        // Query the Batch Registry via cross-contract call
         let get_batch_func = Symbol::new(&env, "get_batch");
         let get_batch_args = (batch_id.clone(),).into_val(&env);
         let batch_opt: Option<Batch> = env.invoke_contract(&registry, &get_batch_func, get_batch_args);
         
         let batch = batch_opt.expect("Batch not found in registry");
 
-        // Enforce active and valid state
         if batch.is_recalled {
             panic!("Cannot transfer: batch has been recalled");
+        }
+        if batch.is_quarantined {
+            panic!("Cannot transfer: batch is in quarantine");
         }
         if env.ledger().timestamp() > batch.expiry_date {
             panic!("Cannot transfer: batch has expired");
         }
 
-        // Fetch sender's custody state
         let from_key = DataKey::Custody(batch_id.clone(), from.clone());
+        extend_ttl_if_exists(&env, &from_key);
+
         let mut from_state: CustodianState = env
             .storage()
             .persistent()
             .get(&from_key)
             .expect("Sender has no custody balance for this batch");
 
-        // Enforce valid role transitions
         match from_state.role {
             Role::Manufacturer => {
                 match to_role {
-                    Role::Distributor => {} // Allowed
+                    Role::Distributor => {}
                     Role::Pharmacy => {
                         if !batch.direct_ship {
                             panic!("Standard batch cannot skip distributor step");
@@ -119,7 +160,7 @@ impl CustodyChain {
             }
             Role::Distributor => {
                 match to_role {
-                    Role::Distributor | Role::Pharmacy => {} // Allowed
+                    Role::Distributor | Role::Pharmacy => {}
                     _ => panic!("Invalid target role for distributor transfer"),
                 }
             }
@@ -128,7 +169,6 @@ impl CustodyChain {
             }
         }
 
-        // Deduct quantity using checked subtraction
         let new_from_qty = from_state
             .quantity
             .checked_sub(quantity)
@@ -141,8 +181,9 @@ impl CustodyChain {
             env.storage().persistent().set(&from_key, &from_state);
         }
 
-        // Increment target's quantity
         let to_key = DataKey::Custody(batch_id.clone(), to.clone());
+        extend_ttl_if_exists(&env, &to_key);
+
         let mut to_state = if env.storage().persistent().has(&to_key) {
             let state: CustodianState = env.storage().persistent().get(&to_key).unwrap();
             if state.role != to_role {
@@ -163,14 +204,13 @@ impl CustodyChain {
 
         env.storage().persistent().set(&to_key, &to_state);
 
-        // Emit Handoff event
         env.events().publish(
             (Symbol::new(&env, "custody_handoff"), batch_id),
             (from, to, quantity, to_role as u32),
         );
     }
 
-    /// Dispenses units of a batch to patients, decrementing the pharmacy's balance.
+    /// Dispenses units of a batch to patients.
     pub fn dispense_units(env: Env, batch_id: Symbol, pharmacy: Address, quantity: u32) {
         pharmacy.require_auth();
 
@@ -184,23 +224,25 @@ impl CustodyChain {
             .get(&DataKey::Registry)
             .expect("Contract not initialized");
 
-        // Query the Batch Registry via cross-contract call
         let get_batch_func = Symbol::new(&env, "get_batch");
         let get_batch_args = (batch_id.clone(),).into_val(&env);
         let batch_opt: Option<Batch> = env.invoke_contract(&registry, &get_batch_func, get_batch_args);
         
         let batch = batch_opt.expect("Batch not found in registry");
 
-        // Enforce active state
         if batch.is_recalled {
             panic!("Cannot dispense: batch has been recalled");
+        }
+        if batch.is_quarantined {
+            panic!("Cannot dispense: batch is in quarantine");
         }
         if env.ledger().timestamp() > batch.expiry_date {
             panic!("Cannot dispense: batch has expired");
         }
 
-        // Load pharmacy custody state
         let key = DataKey::Custody(batch_id.clone(), pharmacy.clone());
+        extend_ttl_if_exists(&env, &key);
+
         let mut state: CustodianState = env
             .storage()
             .persistent()
@@ -211,7 +253,6 @@ impl CustodyChain {
             panic!("Only pharmacies can dispense units");
         }
 
-        // Decrement balance
         let new_qty = state
             .quantity
             .checked_sub(quantity)
@@ -224,7 +265,6 @@ impl CustodyChain {
             env.storage().persistent().set(&key, &state);
         }
 
-        // Emit Dispense event
         env.events().publish(
             (Symbol::new(&env, "units_dispensed"), batch_id),
             (pharmacy, quantity, new_qty),
@@ -234,6 +274,7 @@ impl CustodyChain {
     /// Read-only method to fetch the custody state of an address.
     pub fn get_custodian_state(env: Env, batch_id: Symbol, address: Address) -> Option<CustodianState> {
         let key = DataKey::Custody(batch_id, address);
+        extend_ttl_if_exists(&env, &key);
         env.storage().persistent().get(&key)
     }
 

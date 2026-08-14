@@ -189,17 +189,60 @@ export async function getBatchOnChain(batchId: string): Promise<any> {
         // If the contract returns an Option<Batch>, nativeVal represents the struct
         return {
             batch_id: batchId,
-            drug_name: nativeVal.drug_name.toString(),
-            manufacturer: nativeVal.manufacturer.toString(),
-            quantity: Number(nativeVal.quantity),
-            manufacture_date: Number(nativeVal.manufacture_date),
-            expiry_date: Number(nativeVal.expiry_date),
+            drug_name: nativeVal.drug_name ? nativeVal.drug_name.toString() : "",
+            manufacturer: nativeVal.manufacturer ? nativeVal.manufacturer.toString() : "",
+            quantity: Number(nativeVal.quantity || 0),
+            manufacture_date: Number(nativeVal.manufacture_date || 0),
+            expiry_date: Number(nativeVal.expiry_date || 0),
             direct_ship: nativeVal.direct_ship ? 1 : 0,
             is_recalled: nativeVal.is_recalled ? 1 : 0,
-            recalled_by: nativeVal.recalled_by ? nativeVal.recalled_by.toString() : null
+            recalled_by: nativeVal.recalled_by ? nativeVal.recalled_by.toString() : null,
+            is_quarantined: nativeVal.is_quarantined ? 1 : 0,
+            quarantine_reason: nativeVal.quarantine_reason ? nativeVal.quarantine_reason.toString() : null
         };
     } catch (e) {
         console.error("Failed to query on-chain batch details:", e);
         throw e;
     }
 }
+
+/**
+ * Places a batch under quarantine on-chain.
+ */
+export async function flagQuarantineOnChain(sourceAddress: string, batchId: string, reason: string): Promise<string> {
+    const contractId = getRegistryContractId();
+    return await invokeContract({
+        sourceAddress,
+        contractId,
+        functionName: "flag_quarantine",
+        args: [batchId, sourceAddress, reason]
+    });
+}
+
+/**
+ * Releases a batch from quarantine on-chain.
+ */
+export async function releaseQuarantineOnChain(sourceAddress: string, batchId: string): Promise<string> {
+    const contractId = getRegistryContractId();
+    return await invokeContract({
+        sourceAddress,
+        contractId,
+        functionName: "release_quarantine",
+        args: [batchId, sourceAddress]
+    });
+}
+
+/**
+ * Logs cold-chain sensor telemetry on-chain (temp degrees celsius, relative humidity %).
+ */
+export async function logTelemetryOnChain(sourceAddress: string, batchId: string, tempCelsius: number, humidityPercent: number): Promise<string> {
+    const contractId = getCustodyContractId();
+    const tempScaled = Math.round(tempCelsius * 10);
+    return await invokeContract({
+        sourceAddress,
+        contractId,
+        functionName: "log_telemetry",
+        args: [batchId, sourceAddress, tempScaled, humidityPercent]
+    });
+}
+

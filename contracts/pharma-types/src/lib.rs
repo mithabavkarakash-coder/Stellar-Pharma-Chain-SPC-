@@ -36,6 +36,10 @@ pub struct Batch {
     pub is_recalled: bool,
     /// The address of the entity that flagged the recall.
     pub recalled_by: Option<Address>,
+    /// Indicates if the batch is placed in quarantine/hold.
+    pub is_quarantined: bool,
+    /// Reason for quarantine isolation if flagged.
+    pub quarantine_reason: Option<String>,
 }
 
 /// The custody balance and role of a specific supply chain participant.
