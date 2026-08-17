@@ -57,11 +57,11 @@ You can deploy using the following standard Rust multi-stage `Dockerfile` (creat
 FROM rust:1.80-slim AS builder
 WORKDIR /app
 COPY . .
-RUN cargo build --release --bin backend
+RUN cargo build --release --package pharma-backend
 
 FROM debian:bookworm-slim
 WORKDIR /app
-COPY --from:builder /app/target/release/backend /usr/local/bin/backend
+COPY --from=builder /app/target/release/pharma-backend /usr/local/bin/pharma-backend
 EXPOSE 8080
-CMD ["backend"]
+CMD ["pharma-backend"]
 ```

@@ -63,7 +63,7 @@ To run the complete automated test suite locally:
 cargo test --package pharma-types --package batch-registry --package custody-chain
 
 # 2. Test Backend Indexer & REST API
-cargo test --package backend
+cargo test --package pharma-backend
 
 # 3. Test Frontend Next.js Components & Utilities
 cd frontend && npm test

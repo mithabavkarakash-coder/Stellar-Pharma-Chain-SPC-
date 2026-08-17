@@ -280,7 +280,7 @@ The project includes unit and integration tests across all layers:
 cargo test --package pharma-types --package batch-registry --package custody-chain
 
 # 2. Test Backend Indexer & REST API
-cargo test --package backend
+cargo test --package pharma-backend
 
 # 3. Test Frontend Next.js Components & Utilities (Vitest + React Testing Library)
 cd frontend && npm test
