@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { WalletProvider } from "../context/WalletContext";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 export const metadata: Metadata = {
   title: "Stellar Pharma Chain (SPC) | On-Chain Pharmaceutical Verification",
@@ -15,10 +16,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <WalletProvider>
-          {children}
-        </WalletProvider>
+        <ErrorBoundary>
+          <WalletProvider>
+            {children}
+          </WalletProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );
 }
+

@@ -1,7 +1,9 @@
 # 🛡️ Stellar Pharma Chain (SPC)
 
 [![Stellar](https://img.shields.io/badge/Blockchain-Stellar%20%2F%20Soroban-000000?style=for-the-badge&logo=stellar)](https://stellar.org)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/mithabavkarakash-coder/Stellar-Pharma-Chain-SPC-/actions)
 [![Next.js](https://img.shields.io/badge/Frontend-Next.js%2015-000000?style=for-the-badge&logo=nextdotjs)](https://nextjs.org)
+
 [![Rust](https://img.shields.io/badge/Backend-Rust%20%2F%20Axum-black?style=for-the-badge&logo=rust)](https://www.rust-lang.org)
 [![SQLite](https://img.shields.io/badge/Database-SQLite-003b57?style=for-the-badge&logo=sqlite)](https://sqlite.org)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://stellar-pharma-chain-spc-rhfo.vercel.app/)
@@ -216,13 +218,48 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser to acces
 
 ---
 
-## 🌐 Deployment Overview
+## 🌐 Deployment & Docker Setup
 
 - **Frontend Hosting**: Deployed on **Vercel** with Next.js App Router preset. (See [DEPLOYMENT.md](file:///DEPLOYMENT.md) for step-by-step guidance).
-- **Backend Hosting**: Designed for containerized deployment on **Fly.io**, **Render**, or **AWS** with persistent SQLite volume storage.
+- **Backend & Indexer Container**: Dockerized multi-stage Rust build with persistent volume storage.
+
+### Docker Compose Orchestration
+
+To run the complete production environment locally via Docker:
+
+```bash
+docker-compose up --build
+```
+This boots:
+* Rust Backend & Event Indexer on `http://localhost:8080` (WebSocket at `ws://localhost:8080/ws`).
+* Next.js 15 Frontend on `http://localhost:3000`.
+
+---
+
+## 🧪 Comprehensive Test Suite
+
+The project includes unit and integration tests across all layers:
+
+```bash
+# 1. Test Smart Contracts (Rust / Soroban)
+cargo test --package pharma-types --package batch-registry --package custody-chain
+
+# 2. Test Backend Indexer & REST API
+cargo test --package backend
+
+# 3. Test Frontend Next.js Components & Utilities (Vitest + React Testing Library)
+cd frontend && npm test
+```
+
+---
+
+## 🎤 Demo & Hackathon Presentation Guide
+
+For live demonstrations, hackathon presentations, test vectors, and persona walkthroughs, check out [docs/DEMO_PRESENTATION.md](file:///docs/DEMO_PRESENTATION.md).
 
 ---
 
 ## 📄 License
 
 Distributed under the MIT License.
+

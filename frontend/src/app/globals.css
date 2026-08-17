@@ -763,3 +763,72 @@ input:checked + .toggle-slider:before {
   background-color: #fff;
 }
 
+/* Mobile Responsiveness & Touch Optimization Utilities */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 0 12px;
+  }
+
+  .navbar-inner {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .navbar-brand span {
+    font-size: 1.1rem;
+  }
+
+  .btn {
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+
+  .grid-2col, .grid-3col, .grid-4col {
+    grid-template-columns: 1fr !important;
+  }
+
+  .glass-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .desktop-sidebar {
+    display: none;
+  }
+
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: rgba(10, 14, 26, 0.95);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-glass);
+    z-index: 1000;
+    justify-content: space-around;
+    align-items: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .wallet-badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+}
+
+

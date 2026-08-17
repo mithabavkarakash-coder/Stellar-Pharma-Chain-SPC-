@@ -512,5 +512,68 @@ mod test {
         // Should panic
         custody_client.transfer_custody(&batch_id, &manufacturer, &distributor, &500, &Role::Distributor);
     }
+
+    #[test]
+    fn test_telemetry_and_excursion_logging() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let (_registry_id, custody_id, registry_client, custody_client) = setup_test_env(&env);
+
+        let manufacturer = Address::generate(&env);
+        let batch_id = Symbol::new(&env, "BATCH_TEMP");
+        let drug_name = String::from_str(&env, "Insulin");
+
+        registry_client.register_batch(
+            &batch_id,
+            &drug_name,
+            &manufacturer,
+            &1000,
+            &1000,
+            &2000,
+            &false,
+            &custody_id,
+        );
+
+        // Normal temperature: 4.5°C (45 scaled)
+        custody_client.log_telemetry(&batch_id, &manufacturer, &45, &50);
+
+        // Cold excursion: -1.0°C (-10 scaled)
+        custody_client.log_telemetry(&batch_id, &manufacturer, &-10, &60);
+
+        // Heat excursion: 12.0°C (120 scaled)
+        custody_client.log_telemetry(&batch_id, &manufacturer, &120, &70);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot transfer: batch is in quarantine")]
+    fn test_quarantine_blocks_transfers() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let (_registry_id, custody_id, registry_client, custody_client) = setup_test_env(&env);
+
+        let manufacturer = Address::generate(&env);
+        let distributor = Address::generate(&env);
+
+        let batch_id = Symbol::new(&env, "BATCH_Q_BLOCK");
+        let drug_name = String::from_str(&env, "Antibiotic");
+
+        registry_client.register_batch(
+            &batch_id,
+            &drug_name,
+            &manufacturer,
+            &500,
+            &1000,
+            &2000,
+            &false,
+            &custody_id,
+        );
+
+        let reason = String::from_str(&env, "Suspected breach");
+        registry_client.flag_quarantine(&batch_id, &manufacturer, &reason);
+
+        // Should panic due to active quarantine
+        custody_client.transfer_custody(&batch_id, &manufacturer, &distributor, &100, &Role::Distributor);
+    }
 }
+
 
