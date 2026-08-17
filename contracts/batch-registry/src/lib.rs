@@ -296,6 +296,7 @@ impl BatchRegistry {
 #[cfg(test)]
 mod test {
     use super::*;
+    use pharma_types::Role;
     use soroban_sdk::{Env, Address, String, Symbol, testutils::Address as _};
     use custody_chain::{CustodyChain, CustodyChainClient};
 

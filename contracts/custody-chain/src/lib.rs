@@ -287,7 +287,7 @@ impl CustodyChain {
 #[cfg(test)]
 mod test {
     use super::*;
-    use soroban_sdk::{Env, Address, String, Symbol, testutils::Address as _};
+    use soroban_sdk::{Env, Address, String, Symbol, testutils::Address as _, testutils::Ledger as _};
     use batch_registry::{BatchRegistry, BatchRegistryClient};
 
     fn setup_test_env(env: &Env) -> (Address, Address, BatchRegistryClient<'static>, CustodyChainClient<'static>) {
