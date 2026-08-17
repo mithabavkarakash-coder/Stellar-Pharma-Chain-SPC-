@@ -4,23 +4,12 @@ import { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import { useWallet } from "../../context/WalletContext";
 import { useRouter } from "next/navigation";
-import { 
-  ShieldAlert, 
-  CheckCheck, 
-  Wifi, 
-  WifiOff, 
-  AlertOctagon, 
-  Clock, 
-  ShieldCheck, 
-  FileText,
-  MapPin,
-  HelpCircle
-} from "lucide-react";
+import { CheckCheck } from "lucide-react";
 
 export default function SecurityCenter() {
   const wallet = useWallet();
   const router = useRouter();
-  const [wsConnected, setWsConnected] = useState(false);
+  const [_wsConnected, setWsConnected] = useState(false);
 
   // Alerts state populated from mockup
   const [alerts, setAlerts] = useState([

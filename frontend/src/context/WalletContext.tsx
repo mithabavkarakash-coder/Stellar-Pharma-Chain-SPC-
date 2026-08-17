@@ -64,7 +64,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             } catch (e) {}
         }
 
-        let secret = localStorage.getItem(`mock_secret_${roleType}`);
+        const secret = localStorage.getItem(`mock_secret_${roleType}`);
         let keypair: Keypair;
         if (secret) {
             try {
@@ -299,7 +299,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
 
         autoConnect();
-    }, [fetchBalance]);
+    }, [connect, fetchBalance]);
 
     return (
         <WalletContext.Provider

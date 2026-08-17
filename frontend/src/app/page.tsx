@@ -9,19 +9,11 @@ import {
   Building, 
   Truck, 
   PlusCircle, 
-  CheckCircle, 
-  AlertTriangle, 
   Search, 
   QrCode, 
   ArrowRight,
-  Wifi,
-  WifiOff,
-  BellRing,
-  Activity,
   ShieldAlert,
-  Globe,
-  TrendingUp,
-  MapPin
+  Globe
 } from "lucide-react";
 
 export default function Home() {
@@ -29,7 +21,7 @@ export default function Home() {
   const router = useRouter();
   const [searchId, setSearchId] = useState("");
   const [liveEvents, setLiveEvents] = useState<any[]>([]);
-  const [wsConnected, setWsConnected] = useState(false);
+  const [_wsConnected, setWsConnected] = useState(false);
 
   // Recently Verified logs
   const [verifiedLogs, setVerifiedLogs] = useState([

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useWallet } from "../../context/WalletContext";
 import Navbar from "../../components/Navbar";
 import { invokeContract, getRegistryContractId, getCustodyContractId } from "../../utils/soroban";
-import { PlusCircle, ShieldAlert, CheckCircle, HelpCircle } from "lucide-react";
+import { PlusCircle, ShieldAlert, HelpCircle } from "lucide-react";
 
 export default function ManufacturerPortal() {
     const wallet = useWallet();

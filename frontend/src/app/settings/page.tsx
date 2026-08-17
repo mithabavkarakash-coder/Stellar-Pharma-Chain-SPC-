@@ -6,9 +6,6 @@ import { useWallet } from "../../context/WalletContext";
 import { useRouter } from "next/navigation";
 import { 
   User, 
-  Mail, 
-  Briefcase, 
-  Hash, 
   TrendingUp, 
   ShieldCheck, 
   Lock, 

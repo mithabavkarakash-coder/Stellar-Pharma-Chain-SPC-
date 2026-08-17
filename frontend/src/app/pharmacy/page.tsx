@@ -76,7 +76,7 @@ export default function PharmacyPortal() {
 
     useEffect(() => {
         if (wallet.address) {
-            fetchPharmacyData();
+            void fetchPharmacyData();
         }
     }, [wallet.address, fetchPharmacyData]);
 

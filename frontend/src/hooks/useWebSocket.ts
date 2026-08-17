@@ -37,6 +37,8 @@ export function useWebSocket(customUrl?: string): UseWebSocketReturn {
         return "ws://localhost:8080/ws";
     }, [customUrl]);
 
+    const connectRef = useRef<() => void>(() => {});
+
     const connect = useCallback(() => {
         if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
             return;
@@ -58,7 +60,7 @@ export function useWebSocket(customUrl?: string): UseWebSocketReturn {
                 try {
                     const parsed = JSON.parse(event.data);
                     const systemEvt: SystemEvent = {
-                        id: parsed.id || `evt_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                        id: parsed.id || `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
                         event_type: parsed.event_type || "batch_registered",
                         batch_id: parsed.batch_id,
                         timestamp: parsed.timestamp || new Date().toISOString(),
@@ -70,7 +72,7 @@ export function useWebSocket(customUrl?: string): UseWebSocketReturn {
                     if (systemEvt.event_type === "excursion_alert" || systemEvt.event_type === "batch_quarantined" || systemEvt.event_type === "batch_recalled") {
                         setLatestAlert(systemEvt);
                     }
-                } catch (e) {
+                } catch {
                     console.warn("[WebSocket] Failed to parse message:", event.data);
                 }
             };
@@ -83,13 +85,17 @@ export function useWebSocket(customUrl?: string): UseWebSocketReturn {
                 setStatus("disconnected");
                 wsRef.current = null;
                 reconnectTimerRef.current = setTimeout(() => {
-                    connect();
+                    connectRef.current();
                 }, 5000);
             };
-        } catch (e) {
+        } catch {
             setStatus("error");
         }
     }, [getWsUrl]);
+
+    useEffect(() => {
+        connectRef.current = connect;
+    }, [connect]);
 
     useEffect(() => {
         connect();

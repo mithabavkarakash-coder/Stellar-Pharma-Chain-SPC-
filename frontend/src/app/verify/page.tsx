@@ -13,15 +13,13 @@ import {
   Search, 
   QrCode, 
   XCircle,
-  Calendar,
-  Building,
-  UserCheck,
   Factory,
   Truck,
-  Download,
-  AlertTriangle,
   Globe,
-  Thermometer
+  Thermometer,
+  Building,
+  Download,
+  AlertTriangle
 } from "lucide-react";
 import { getBatchOnChain } from "../../utils/soroban";
 
@@ -48,28 +46,27 @@ function VerifyPortalContent() {
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
       const res = await fetch(`${backendUrl}/api/batches/${id}`);
-      if (!res.ok) {
-        if (res.status === 404) {
-          throw new Error(`Batch ID "${id}" was not found on-chain.`);
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+      } else {
+        const chainData = await getBatchOnChain(id);
+        if (chainData) {
+          setData(chainData);
+        } else {
+          setError("Batch not found on server or blockchain");
         }
-        throw new Error("Failed to retrieve batch information.");
       }
-      const payload = await res.json();
-      setData(payload);
-    } catch (err: any) {
-      console.warn("Backend fetch failed, querying Stellar Testnet directly...", err);
+    } catch {
       try {
-        const chainBatch = await getBatchOnChain(id);
-        if (!chainBatch) {
-          throw new Error(`Batch ID "${id}" was not found on-chain.`);
+        const chainData = await getBatchOnChain(id);
+        if (chainData) {
+          setData(chainData);
+        } else {
+          setError("Failed to fetch batch details");
         }
-        setData({
-          batch: chainBatch,
-          handoffs: [],
-          dispenses: [],
-        });
-      } catch (chainErr: any) {
-        setError(chainErr.message || "Failed to load batch from backend or Stellar Testnet.");
+      } catch {
+        setError("Failed to fetch batch details from blockchain");
       }
     } finally {
       setLoading(false);
@@ -78,7 +75,6 @@ function VerifyPortalContent() {
 
   useEffect(() => {
     if (batchIdParam) {
-      setBatchId(batchIdParam);
       fetchBatchDetails(batchIdParam);
     }
   }, [batchIdParam]);
@@ -117,7 +113,7 @@ function VerifyPortalContent() {
                 const url = new URL(decodedText);
                 extractedId = url.searchParams.get("id") || decodedText;
               }
-            } catch (e) {
+            } catch {
               // Not a URL
             }
             
@@ -128,7 +124,7 @@ function VerifyPortalContent() {
             scannerRef.current = null;
             setIsScanning(false);
           },
-          (errorMessage) => {
+          (_errorMessage) => {
             // Silence noise
           }
         );
@@ -153,7 +149,8 @@ function VerifyPortalContent() {
   };
 
   const isExpired = (expiryEpoch: number) => {
-    return Math.floor(Date.now() / 1000) > expiryEpoch;
+    const currentNow = Math.floor(Date.now() / 1000);
+    return currentNow > expiryEpoch;
   };
 
   // Export Certificate JSON handler

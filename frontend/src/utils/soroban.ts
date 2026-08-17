@@ -2,8 +2,6 @@ import {
     Horizon, 
     TransactionBuilder, 
     Networks, 
-    Operation, 
-    xdr, 
     nativeToScVal, 
     scValToNative,
     rpc,

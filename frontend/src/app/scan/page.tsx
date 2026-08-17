@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import { useWallet } from "../../context/WalletContext";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import { QrCode, Flashlight, Keyboard, RefreshCw, XCircle } from "lucide-react";
+import { Flashlight, Keyboard, RefreshCw, XCircle } from "lucide-react";
 
 export default function ScanPortal() {
   const wallet = useWallet();
@@ -14,7 +14,7 @@ export default function ScanPortal() {
   const [flashlightOn, setFlashlightOn] = useState(false);
   const [manualInputActive, setManualInputActive] = useState(false);
   const [manualId, setManualId] = useState("");
-  const [scannerActive, setScannerActive] = useState(true);
+  const [scannerActive, _setScannerActive] = useState(true);
   const [statusMessage, setStatusMessage] = useState("CAMERA_ACTIVE_WAITING_FOR_MARKER");
 
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
@@ -48,14 +48,16 @@ export default function ScanPortal() {
                 const url = new URL(decodedText);
                 extractedId = url.searchParams.get("id") || decodedText;
               }
-            } catch (e) {}
+            } catch {
+              // Not a URL
+            }
 
             // Redirect
             setTimeout(() => {
               router.push(`/verify?id=${encodeURIComponent(extractedId)}`);
             }, 800);
           },
-          (error) => {
+          (_error) => {
             // Keep searching silently
           }
         );

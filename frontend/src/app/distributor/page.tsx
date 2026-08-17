@@ -61,7 +61,7 @@ export default function DistributorPortal() {
 
     useEffect(() => {
         if (wallet.address) {
-            fetchHandoffHistory();
+            void fetchHandoffHistory();
         }
     }, [wallet.address, fetchHandoffHistory]);
 
