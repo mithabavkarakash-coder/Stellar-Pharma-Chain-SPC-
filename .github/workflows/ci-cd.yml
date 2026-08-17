@@ -16,7 +16,7 @@ jobs:
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          targets: wasm32v1-none
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -25,7 +25,7 @@ jobs:
         run: cargo test --package pharma-types --package batch-registry --package custody-chain
 
       - name: Build Soroban WASM Binaries
-        run: cargo build --target wasm32-unknown-unknown --release --package batch-registry --package custody-chain
+        run: cargo build --target wasm32v1-none --release --package batch-registry --package custody-chain
 
   backend:
     name: Rust Backend & Indexer Build & Test

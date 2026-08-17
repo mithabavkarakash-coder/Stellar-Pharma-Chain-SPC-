@@ -2,7 +2,7 @@
 #![allow(deprecated)]
 #![allow(clippy::too_many_arguments)]
 use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, IntoVal, Symbol, String};
-use pharma_types::{Batch, Role};
+use pharma_types::Batch;
 
 #[contracttype]
 pub enum DataKey {
