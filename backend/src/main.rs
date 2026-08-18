@@ -94,3 +94,52 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_database_initialization_and_operations() {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .expect("Failed to create in-memory SQLite pool");
+
+        db::init_db(&pool).await.expect("Failed to init DB");
+
+        let batch = db::BatchModel {
+            batch_id: "BATCH-TEST-001".to_string(),
+            drug_name: "Amoxicillin".to_string(),
+            manufacturer: "G0000000000000000000000000000000000000000000000000000001".to_string(),
+            quantity: 500,
+            manufacture_date: 1700000000,
+            expiry_date: 1800000000,
+            direct_ship: false,
+            is_recalled: false,
+            recalled_by: None,
+            created_at: 1700000050,
+        };
+
+        db::save_batch(&pool, &batch).await.expect("Failed to save batch");
+
+        let fetched = db::get_batch(&pool, "BATCH-TEST-001")
+            .await
+            .expect("Failed to get batch");
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().drug_name, "Amoxicillin");
+
+        let batches = db::get_batches(&pool).await.expect("Failed to get batches");
+        assert_eq!(batches.len(), 1);
+
+        db::recall_batch(&pool, "BATCH-TEST-001", "FDA_OFFICIAL")
+            .await
+            .expect("Failed to recall batch");
+        let recalled = db::get_batch(&pool, "BATCH-TEST-001")
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(recalled.is_recalled);
+        assert_eq!(recalled.recalled_by, Some("FDA_OFFICIAL".to_string()));
+    }
+}

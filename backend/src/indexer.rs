@@ -1,8 +1,8 @@
 use std::time::Duration;
 use reqwest::Client;
 use serde_json::json;
-use stellar_xdr::curr::{ScVal, ScAddress, AccountId, PublicKey, Uint256};
-use stellar_strkey::{Strkey, PublicKeyEd25519, Contract};
+use stellar_xdr::curr::{ScVal, ScAddress, AccountId, PublicKey, Uint256, Limits, ReadXdr};
+use stellar_strkey::{Strkey, ed25519, Contract};
 use tokio::sync::broadcast;
 use sqlx::sqlite::SqlitePool;
 
@@ -193,7 +193,7 @@ impl Indexer {
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow::anyhow!("Missing value in event"))?;
 
-            let value_val = match ScVal::from_xdr_base64(value_base64) {
+            let value_val = match ScVal::from_xdr_base64(value_base64, Limits::none()) {
                 Ok(v) => v,
                 Err(e) => {
                     eprintln!("Failed to parse value XDR base64: {}", e);
@@ -204,7 +204,7 @@ impl Indexer {
             let mut topics = Vec::new();
             for t_val in topic_array {
                 if let Some(t_str) = t_val.as_str() {
-                    if let Ok(parsed_topic) = ScVal::from_xdr_base64(t_str) {
+                    if let Ok(parsed_topic) = ScVal::from_xdr_base64(t_str, Limits::none()) {
                         topics.push(parsed_topic);
                     }
                 }
@@ -376,18 +376,17 @@ impl Indexer {
 // Extraction Helpers
 fn scval_to_string(val: &ScVal) -> Option<String> {
     match val {
-        ScVal::Symbol(s) => Some(s.to_string()),
-        ScVal::String(s) => Some(s.to_string()),
+        ScVal::Symbol(s) => Some(s.0.to_string()),
+        ScVal::String(s) => Some(s.0.to_string()),
         ScVal::Address(addr) => {
             match addr {
-                ScAddress::Account(account_id) => {
-                    let AccountId::PublicKeyTypeEd25519(Uint256(bytes)) = account_id;
-                    let pubkey = Strkey::PublicKeyEd25519(PublicKeyEd25519(*bytes));
-                    Some(pubkey.to_string())
+                ScAddress::Account(AccountId(PublicKey::PublicKeyTypeEd25519(Uint256(bytes)))) => {
+                    let pubkey = Strkey::PublicKeyEd25519(ed25519::PublicKey(*bytes));
+                    Some(pubkey.to_string().as_str().to_string())
                 }
                 ScAddress::Contract(hash) => {
                     let contract = Strkey::Contract(Contract(hash.0));
-                    Some(contract.to_string())
+                    Some(contract.to_string().as_str().to_string())
                 }
             }
         }

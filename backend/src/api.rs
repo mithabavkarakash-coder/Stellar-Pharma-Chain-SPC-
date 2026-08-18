@@ -1,5 +1,6 @@
 use axum::{
     extract::{Path, State, WebSocketUpgrade, ws::{WebSocket, Message}, ConnectInfo},
+    http::StatusCode,
     response::IntoResponse,
     routing::get,
     Json, Router,
@@ -66,9 +67,9 @@ async fn list_batches(
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
     match db::get_batches(&state.pool).await {
-        Ok(list) => (hyper::StatusCode::OK, Json(list)).into_response(),
+        Ok(list) => (StatusCode::OK, Json(list)).into_response(),
         Err(e) => (
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "error": e.to_string() })),
         ).into_response(),
     }
@@ -84,7 +85,7 @@ async fn get_batch_details(
             let handoffs = db::get_handoffs(&state.pool, &batch_id).await.unwrap_or_default();
             let dispenses = db::get_dispenses(&state.pool, &batch_id).await.unwrap_or_default();
             (
-                hyper::StatusCode::OK,
+                StatusCode::OK,
                 Json(json!({
                     "batch": batch,
                     "handoffs": handoffs,
@@ -93,11 +94,11 @@ async fn get_batch_details(
             ).into_response()
         }
         Ok(None) => (
-            hyper::StatusCode::NOT_FOUND,
+            StatusCode::NOT_FOUND,
             Json(json!({ "error": "Batch not found" })),
         ).into_response(),
         Err(e) => (
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "error": e.to_string() })),
         ).into_response(),
     }
@@ -113,7 +114,7 @@ async fn verify_batch(
     let ip = addr.ip().to_string();
     if !state.rate_limiter.check(ip).await {
         return (
-            hyper::StatusCode::TOO_MANY_REQUESTS,
+            StatusCode::TOO_MANY_REQUESTS,
             Json(json!({ "error": "Too many requests. Please try again later." })),
         ).into_response();
     }
@@ -179,7 +180,7 @@ async fn verify_batch(
             }
 
             (
-                hyper::StatusCode::OK,
+                StatusCode::OK,
                 Json(json!({
                     "is_genuine": true,
                     "is_recalled": batch.is_recalled,
@@ -193,7 +194,7 @@ async fn verify_batch(
             ).into_response()
         }
         Ok(None) => (
-            hyper::StatusCode::OK, // Return 200 with is_genuine: false to avoid showing server errors
+            StatusCode::OK, // Return 200 with is_genuine: false to avoid showing server errors
             Json(json!({
                 "is_genuine": false,
                 "is_recalled": false,
@@ -203,7 +204,7 @@ async fn verify_batch(
             })),
         ).into_response(),
         Err(e) => (
-            hyper::StatusCode::INTERNAL_SERVER_ERROR,
+            StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "error": e.to_string() })),
         ).into_response(),
     }
