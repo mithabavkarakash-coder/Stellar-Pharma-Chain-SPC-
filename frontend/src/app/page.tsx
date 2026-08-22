@@ -15,13 +15,73 @@ import {
   ShieldAlert,
   Globe
 } from "lucide-react";
+import AnalyticsDashboard from "../components/AnalyticsDashboard";
+import MedicineTrackingTable, { MedicineRecord } from "../components/MedicineTrackingTable";
+import GS1DataMatrixModal from "../components/GS1DataMatrixModal";
 
 export default function Home() {
   const wallet = useWallet();
   const router = useRouter();
+  const [selectedGS1Batch, setSelectedGS1Batch] = useState<MedicineRecord | null>(null);
+  const [isGS1Open, setIsGS1Open] = useState(false);
   const [searchId, setSearchId] = useState("");
   const [liveEvents, setLiveEvents] = useState<any[]>([]);
   const [_wsConnected, setWsConnected] = useState(false);
+
+  // Registered Medicine Batches List
+  const [batchesList, setBatchesList] = useState<MedicineRecord[]>([
+    {
+      batch_id: "AX-7729-001",
+      drug_name: "Amoxicillin Trihydrate 500mg",
+      manufacturer: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+      quantity: 5000,
+      manufacture_date: Math.floor(Date.now() / 1000) - 86400 * 30,
+      expiry_date: Math.floor(Date.now() / 1000) + 86400 * 365,
+      direct_ship: false,
+      is_recalled: false,
+      current_role: "Distributor"
+    },
+    {
+      batch_id: "MT-2023-F9",
+      drug_name: "Metformin XL 500mg Extended Release",
+      manufacturer: "G0000000000000000000000000000000000000000000000000000001",
+      quantity: 12000,
+      manufacture_date: Math.floor(Date.now() / 1000) - 86400 * 120,
+      expiry_date: Math.floor(Date.now() / 1000) + 86400 * 45, // Expiring soon
+      direct_ship: false,
+      is_recalled: false,
+      current_role: "Pharmacy"
+    },
+    {
+      batch_id: "PH-2024-001",
+      drug_name: "Insulin Glargine Cold-Chain",
+      manufacturer: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+      quantity: 2500,
+      manufacture_date: Math.floor(Date.now() / 1000) - 86400 * 200,
+      expiry_date: Math.floor(Date.now() / 1000) - 86400 * 10, // Expired
+      direct_ship: true,
+      is_recalled: true,
+      current_role: "Manufacturer"
+    }
+  ]);
+
+  useEffect(() => {
+    const fetchBatches = async () => {
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+        const res = await fetch(`${backendUrl}/api/batches`);
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) {
+            setBatchesList(list);
+          }
+        }
+      } catch (e) {
+        // Fallback to sample data
+      }
+    };
+    fetchBatches();
+  }, []);
 
   // Recently Verified logs
   const [verifiedLogs, setVerifiedLogs] = useState([
@@ -165,6 +225,28 @@ export default function Home() {
             </div>
             <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 12 }}>Stellar Testnet node online</p>
           </div>
+        </section>
+
+        {/* Feature 7: Analytics Dashboard */}
+        <section style={{ marginBottom: 32 }}>
+          <AnalyticsDashboard
+            totalProduced={48500}
+            totalSold={31200}
+            activeBatches={batchesList.length}
+            expiredCount={batchesList.filter(b => Math.floor(Date.now()/1000) > b.expiry_date).length}
+            counterfeitAttempts={alertsList.filter(a => a.type === "CRITICAL").length + 5}
+          />
+        </section>
+
+        {/* Feature 1 & 6: Medicine Tracking Dashboard & Expiry Alerts */}
+        <section style={{ marginBottom: 32 }}>
+          <MedicineTrackingTable
+            batches={batchesList}
+            onViewGS1={(batch) => {
+              setSelectedGS1Batch(batch);
+              setIsGS1Open(true);
+            }}
+          />
         </section>
 
         {/* 2. Main Content Grid */}
@@ -453,6 +535,14 @@ export default function Home() {
         </div>
 
       </main>
+
+      {selectedGS1Batch && (
+        <GS1DataMatrixModal
+          isOpen={isGS1Open}
+          onClose={() => setIsGS1Open(false)}
+          batch={selectedGS1Batch}
+        />
+      )}
       
       <style jsx global>{`
         .hover-row:hover {
