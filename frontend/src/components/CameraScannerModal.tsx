@@ -54,7 +54,39 @@ export default function CameraScannerModal({ isOpen, onClose, onScanSuccess }: C
         }
     }, [isOpen, onClose, onScanSuccess]);
 
-    if (!isOpen) return null;
+    const extractBatchId = (text: string): string => {
+        if (!text) return "";
+        let clean = text.trim();
+        // Check if full URL
+        try {
+            if (clean.startsWith("http://") || clean.startsWith("https://")) {
+                const url = new URL(clean);
+                const queryId = url.searchParams.get("id") || url.searchParams.get("lot");
+                if (queryId) return queryId;
+            }
+        } catch (e) {}
+
+        // Check if GS1 Element String with (10) Lot / Batch
+        const gs1LotMatch = clean.match(/\(10\)([A-Z0-9_-]+)/i);
+        if (gs1LotMatch) return gs1LotMatch[1];
+
+        return clean;
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const html5Qrcode = new Html5Qrcode("camera-reader-region");
+            const decodedText = await html5Qrcode.scanFile(file, true);
+            const batchId = extractBatchId(decodedText);
+            onScanSuccess(batchId);
+            onClose();
+        } catch (err: any) {
+            setScannerError("Could not decode QR code from uploaded image. Please try another clear image or enter Batch ID.");
+        }
+    };
 
     return (
         <div style={{
@@ -86,8 +118,8 @@ export default function CameraScannerModal({ isOpen, onClose, onScanSuccess }: C
                             <Camera size={20} />
                         </div>
                         <div>
-                            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0, color: "#fff" }}>Live Camera Package Scanner</h3>
-                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Scan Packaging QR or 2D DataMatrix</span>
+                            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0, color: "#fff" }}>Live Camera & Image QR Scanner</h3>
+                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Scan Packaging QR or Upload Image File</span>
                         </div>
                     </div>
                     <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
@@ -117,13 +149,19 @@ export default function CameraScannerModal({ isOpen, onClose, onScanSuccess }: C
                     )}
                 </div>
 
-                <div style={{ marginTop: 16, textAlign: "center" }}>
+                {/* File Upload Option & Actions */}
+                <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <label className="btn btn-secondary flex-gap" style={{ width: "100%", justifyContent: "center", padding: "10px 0", cursor: "pointer", margin: 0 }}>
+                        <span>📁 Upload QR Image File</span>
+                        <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: "none" }} />
+                    </label>
+
                     <button
                         onClick={onClose}
-                        className="btn btn-secondary"
+                        className="btn btn-primary"
                         style={{ width: "100%", padding: "10px 0", fontSize: "0.9rem" }}
                     >
-                        Close Camera Scanner
+                        Close Scanner
                     </button>
                 </div>
             </div>
