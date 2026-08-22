@@ -4,13 +4,16 @@ import { useState } from "react";
 import { useWallet } from "../../context/WalletContext";
 import Navbar from "../../components/Navbar";
 import { invokeContract, getRegistryContractId, getCustodyContractId } from "../../utils/soroban";
-import { PlusCircle, ShieldAlert, HelpCircle } from "lucide-react";
+import { PlusCircle, ShieldAlert, HelpCircle, QrCode } from "lucide-react";
+import GS1DataMatrixModal from "../../components/GS1DataMatrixModal";
 
 export default function ManufacturerPortal() {
     const wallet = useWallet();
     const [loading, setLoading] = useState(false);
     const [txHash, setTxHash] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [registeredBatch, setRegisteredBatch] = useState<any | null>(null);
+    const [isGS1ModalOpen, setIsGS1ModalOpen] = useState(false);
 
     // Form States - Batch Registration
     const [batchId, setBatchId] = useState("");
@@ -72,6 +75,16 @@ export default function ManufacturerPortal() {
             });
 
             setTxHash(hash);
+            setRegisteredBatch({
+                batch_id: batchId,
+                drug_name: drugName,
+                manufacturer: wallet.address,
+                quantity: qty,
+                manufacture_date: mDate,
+                expiry_date: eDate,
+                direct_ship: directShip
+            });
+
             // Reset form
             setBatchId("");
             setDrugName("");
@@ -170,6 +183,16 @@ export default function ManufacturerPortal() {
                                     <p style={{ fontSize: "0.8rem", marginTop: 4, wordBreak: "break-all" }}>
                                         Tx Hash: <a href={`https://explorer.stellar.org/testnet/tx/${txHash}`} target="_blank" rel="noopener noreferrer">{txHash}</a>
                                     </p>
+                                    {registeredBatch && (
+                                        <button
+                                            onClick={() => setIsGS1ModalOpen(true)}
+                                            className="btn btn-primary flex-gap"
+                                            style={{ marginTop: 12, padding: "8px 16px", fontSize: "0.85rem" }}
+                                        >
+                                            <QrCode size={16} />
+                                            <span>Generate GS1 Packaging Label</span>
+                                        </button>
+                                    )}
                                 </div>
                             )}
 
@@ -318,6 +341,14 @@ export default function ManufacturerPortal() {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {registeredBatch && (
+                    <GS1DataMatrixModal
+                        isOpen={isGS1ModalOpen}
+                        onClose={() => setIsGS1ModalOpen(false)}
+                        batch={registeredBatch}
+                    />
                 )}
             </main>
         </div>
