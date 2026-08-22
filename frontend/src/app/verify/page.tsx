@@ -19,9 +19,19 @@ import {
   Thermometer,
   Building,
   Download,
-  AlertTriangle
+  AlertTriangle,
+  FileCheck,
+  Camera
 } from "lucide-react";
 import { getBatchOnChain } from "../../utils/soroban";
+import GS1DataMatrixModal from "../../components/GS1DataMatrixModal";
+import ComplianceCertificateModal from "../../components/ComplianceCertificateModal";
+import IoTSensorSimulator from "../../components/IoTSensorSimulator";
+import LiveTelemetryChart, { TelemetryPoint } from "../../components/LiveTelemetryChart";
+import GPSCustodyTracker from "../../components/GPSCustodyTracker";
+import CameraScannerModal from "../../components/CameraScannerModal";
+import AIRiskDetector from "../../components/AIRiskDetector";
+import CounterfeitDetector from "../../components/CounterfeitDetector";
 
 function VerifyPortalContent() {
   const wallet = useWallet();
@@ -34,9 +44,32 @@ function VerifyPortalContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Modals & New Components state
+  const [isGS1ModalOpen, setIsGS1ModalOpen] = useState(false);
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  
+  // Live Telemetry history stream state
+  const [telemetryHistory, setTelemetryHistory] = useState<TelemetryPoint[]>([
+    { time: "10:00", temp: 4.2, humidity: 50 },
+    { time: "10:15", temp: 4.5, humidity: 52 },
+    { time: "10:30", temp: 4.3, humidity: 51 },
+    { time: "10:45", temp: 4.6, humidity: 53 },
+    { time: "11:00", temp: 4.4, humidity: 50 }
+  ]);
+
   // Scanner state
   const [isScanning, setIsScanning] = useState(false);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+
+  const handleTelemetryAdded = (temp: number, humidity: number) => {
+    const timeStr = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" });
+    const isEx = temp < 2.0 || temp > 8.0;
+    setTelemetryHistory((prev) => [
+      ...prev,
+      { time: timeStr, temp, humidity, isExcursion: isEx }
+    ].slice(-10));
+  };
 
   const fetchBatchDetails = async (id: string) => {
     if (!id) return;
@@ -286,6 +319,45 @@ function VerifyPortalContent() {
               </div>
             )}
 
+            {/* Feature 3: Counterfeit Medicine Security Matrix */}
+            <div style={{ marginBottom: 24 }}>
+              <CounterfeitDetector
+                batchId={data.batch.batch_id}
+                isGenuine={data.is_genuine !== false}
+                isRecalled={data.batch.is_recalled === 1}
+                isExpired={isExpired(data.batch.expiry_date)}
+                anomalies={data.anomalies || []}
+                manufacturer={data.batch.manufacturer}
+              />
+            </div>
+
+            {/* Feature 8: AI-Powered Risk Detection Engine */}
+            <div style={{ marginBottom: 24 }}>
+              <AIRiskDetector
+                batchId={data.batch.batch_id}
+                anomalies={data.anomalies || []}
+                isRecalled={data.batch.is_recalled === 1}
+                isExpired={isExpired(data.batch.expiry_date)}
+                handoffCount={data.handoffs?.length || 0}
+              />
+            </div>
+
+            {/* WOW Feature Section: Interactive GPS Custody Tracker */}
+            <div style={{ marginBottom: 24 }}>
+              <GPSCustodyTracker
+                manufacturer={data.batch.manufacturer}
+                handoffs={data.handoffs || []}
+                directShip={data.batch.direct_ship === 1}
+                isRecalled={data.batch.is_recalled === 1}
+              />
+            </div>
+
+            {/* WOW Feature Section: Live Telemetry Chart & IoT Sensor Simulator */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, marginBottom: 24 }}>
+              <LiveTelemetryChart data={telemetryHistory} batchId={data.batch.batch_id} />
+              <IoTSensorSimulator batchId={data.batch.batch_id} onTelemetryAdded={handleTelemetryAdded} />
+            </div>
+
             {/* Bento details container */}
             <div className="dashboard-grid">
               
@@ -350,17 +422,6 @@ function VerifyPortalContent() {
                             <div>To: <code style={{ fontSize: "0.7rem" }}>{h.to_address}</code></div>
                             <div style={{ marginTop: 2 }}>Volume: <strong>{h.quantity} units</strong></div>
                           </div>
-                          
-                          {/* Cold Chain telemetric sensor concept from timeline design */}
-                          {idx === 0 && (
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 6, marginTop: 8, fontSize: "0.8rem" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--color-success)" }}>
-                                <Thermometer style={{ width: 16, height: 16 }} />
-                                <span>4.2°C Temperature Stable</span>
-                              </div>
-                              <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--color-success)" }}>TELEMETRY MATCH</span>
-                            </div>
-                          )}
 
                           <div className="flex-between" style={{ marginTop: 8, fontSize: "0.75rem" }}>
                             <span style={{ color: "var(--text-muted)" }}>{new Date(h.timestamp * 1000).toLocaleString()}</span>
@@ -443,36 +504,49 @@ function VerifyPortalContent() {
                   </div>
                 </div>
 
-                {/* GPS Relay Map widget */}
-                <div className="glass-card">
-                  <div className="flex-between" style={{ marginBottom: 12 }}>
-                    <h4 style={{ fontSize: "0.9rem", color: "#fff" }}>GPS Track Relay</h4>
-                    <span className="badge badge-green" style={{ fontSize: "0.6rem" }}>LIVE RELAY</span>
-                  </div>
-                  <div className="verification-map-container" style={{ height: "180px" }}>
-                    <div 
-                      className="verification-map-bg" 
-                      style={{ backgroundImage: `url('https://lh3.googleusercontent.com/aida-public/AB6AXuCIeQWGbSRoqL1vmzUHqC32B8gCGu2WGJDo2ycHeoBGVVP0C_HkEFn_W6HCUydIeznw3P4-Sju13WY2KBuMQtPXf57eH1fAG_3p2CkjIMCtUZdnZKfetmN-YLdBPT18722_55qCiZH8UKzVZqhhl9VZd31SyGXs0x26wMi0Aqgs0yfYwS2fAYV7DPKZs02YgMoTpQlQRBf6lNS-HBPgcLZqOmIDW79eVWZcM6nnzcrDf2lwPzFPNkwnsYYJW1_rrxurRHx6B0gGVl8')` }}
-                    />
-                    <div className="absolute top-2 right-2 bg-black/60 px-2 py-1 rounded text-[9px] text-[#34d399] border border-emerald-500/20">GPS LOCK ACTIVE</div>
-                  </div>
-                </div>
-
-                {/* Actions Grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <button onClick={handleExportCertificate} className="btn btn-primary flex-gap" style={{ justifyContent: "center", padding: "12px" }}>
-                    <Download style={{ width: 16, height: 16 }} />
-                    <span>Certificate</span>
+                {/* Quick Regulatory & GS1 Actions Grid */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
+                  <button onClick={() => setIsGS1ModalOpen(true)} className="btn btn-primary flex-gap" style={{ justifyContent: "center", padding: "12px", background: "linear-gradient(135deg, #0284c7 0%, #0284c7 100%)" }}>
+                    <QrCode style={{ width: 16, height: 16 }} />
+                    <span>View GS1 2D DataMatrix Label</span>
                   </button>
-                  <button onClick={handleReportIssue} className="btn btn-secondary flex-gap" style={{ justifyContent: "center", padding: "12px", border: "1px solid rgba(239, 68, 68, 0.2)", color: "#f87171" }}>
+                  
+                  <button onClick={() => setIsCertModalOpen(true)} className="btn btn-secondary flex-gap" style={{ justifyContent: "center", padding: "12px", background: "rgba(16, 185, 129, 0.15)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.3)" }}>
+                    <FileCheck style={{ width: 16, height: 16 }} />
+                    <span>FDA DSCSA Compliance Audit Report</span>
+                  </button>
+
+                  <button onClick={handleReportIssue} className="btn btn-secondary flex-gap" style={{ justifyContent: "center", padding: "10px", border: "1px solid rgba(239, 68, 68, 0.2)", color: "#f87171" }}>
                     <AlertTriangle style={{ width: 16, height: 16 }} />
-                    <span>Report Issue</span>
+                    <span>Report Compliance Flag</span>
                   </button>
                 </div>
 
               </div>
 
             </div>
+
+            {/* Modals */}
+            <GS1DataMatrixModal
+              isOpen={isGS1ModalOpen}
+              onClose={() => setIsGS1ModalOpen(false)}
+              batch={data.batch}
+            />
+
+            <ComplianceCertificateModal
+              isOpen={isCertModalOpen}
+              onClose={() => setIsCertModalOpen(false)}
+              batchData={data}
+            />
+
+            <CameraScannerModal
+              isOpen={isCameraModalOpen}
+              onClose={() => setIsCameraModalOpen(false)}
+              onScanSuccess={(code) => {
+                setBatchId(code);
+                fetchBatchDetails(code);
+              }}
+            />
 
           </div>
         )}
