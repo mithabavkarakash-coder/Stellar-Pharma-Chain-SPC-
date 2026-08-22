@@ -55,9 +55,13 @@ test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ## 💡 Key Features & Value Propositions
 
 - **🔒 Immutable On-Chain Provenance**: Smart contracts enforce complete origin tracking from licensed pharmaceutical manufacturers to end-point pharmacies.
+- **🏷️ GS1 2D DataMatrix Packaging Labels**: FDA DSCSA and EU FMD compliant 2D DataMatrix serialization label generator encoding GTIN, Batch ID, Expiry Date, and Serial Number.
+- **📄 FDA DSCSA Compliance Audit Certificates**: 1-click printable regulatory audit certificate with cryptographic hash seals and verification QR codes.
+- **🕹️ Live IoT Cold-Chain Sensor Simulator**: Interactive telemetry simulator allowing users and judges to inject live temperature readings ($4.5°C$ normal vs $14.5°C$ heat spike) and observe real-time chart spikes and alerts.
+- **🗺️ Interactive GPS Custody Tracker**: Visual supply chain route visualizer tracking shipment progress across factory origin, transit logistics hubs, and pharmacy endpoints.
+- **📷 Browser Camera Package Scanner**: Live browser camera scanner powered by `html5-qrcode` for instant packaging authentication.
 - **❄️ Real-Time Cold-Chain Telemetry**: Continuous logging of temperature, humidity, and location updates during transit with automated breach threshold detection.
 - **🚨 Instant Cryptographic Recalls**: Emergency recall execution by verified manufacturers immediately freezes downstream custody movements across all nodes.
-- **📱 Secure QR Code Authentication**: Instant verification scanning interface for inspectors, retailers, and patients to check batch legitimacy, timestamps, and recall status.
 - **⚡ High-Performance Event Indexer**: Custom Rust & Axum indexer continuously syncs Soroban ledger state into SQLite with WebSocket event streaming for instant UI updates.
 - **👥 Role-Based Access Control**: Tailored portals and simulated ledger accounts for **Manufacturers**, **Distributors**, **Pharmacies**, and **Inspectors**.
 
