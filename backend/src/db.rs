@@ -101,6 +101,19 @@ pub async fn init_db(pool: &SqlitePool) -> anyhow::Result<()> {
     .execute(pool)
     .await?;
 
+    // Create database performance indices
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_handoffs_batch ON custody_handoffs(batch_id, timestamp);")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_dispenses_batch ON dispense_events(batch_id, timestamp);")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_batches_mfg ON batches(manufacturer);")
+        .execute(pool)
+        .await?;
+
     Ok(())
 }
 
