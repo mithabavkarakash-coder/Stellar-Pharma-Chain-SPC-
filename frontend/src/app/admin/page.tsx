@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useWallet } from "../../context/WalletContext";
 import Navbar from "../../components/Navbar";
 import { invokeContract, getRegistryContractId } from "../../utils/soroban";
-import { ShieldCheck, ShieldAlert, AlertTriangle, Lock, RefreshCw, Key, OctagonAlert } from "lucide-react";
+import { ShieldAlert, AlertTriangle, Lock, Key, OctagonAlert } from "lucide-react";
 
 export default function AdminPortal() {
     const wallet = useWallet();

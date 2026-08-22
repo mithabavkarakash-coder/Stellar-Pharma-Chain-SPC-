@@ -1,7 +1,5 @@
-"use client";
-
 import React from "react";
-import { BrainCircuit, AlertTriangle, ShieldCheck, ShieldAlert, Sparkles, MapPin, Activity } from "lucide-react";
+import { BrainCircuit, Sparkles, Activity } from "lucide-react";
 
 interface AIRiskDetectorProps {
     batchId: string;
@@ -11,7 +9,7 @@ interface AIRiskDetectorProps {
     handoffCount?: number;
 }
 
-export default function AIRiskDetector({ batchId, anomalies = [], isRecalled, isExpired, handoffCount = 0 }: AIRiskDetectorProps) {
+export default function AIRiskDetector({ batchId, anomalies = [], isRecalled, isExpired, handoffCount: _handoffCount = 0 }: AIRiskDetectorProps) {
     // Dynamic Risk Score calculation algorithm (0 - 100)
     let score = 5; // Base low risk score for verified ledger entry
 

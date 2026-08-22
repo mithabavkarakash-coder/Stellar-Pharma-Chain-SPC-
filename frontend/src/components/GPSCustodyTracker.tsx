@@ -1,7 +1,5 @@
-"use client";
-
 import React from "react";
-import { Building, Truck, Store, CheckCircle, Clock, ShieldAlert, Navigation } from "lucide-react";
+import { Building, Truck, Store, Clock, Navigation } from "lucide-react";
 
 interface HandoffStep {
     from?: string;
@@ -121,7 +119,7 @@ export default function GPSCustodyTracker({ manufacturer, handoffs, directShip, 
                 </div>
 
                 {/* Node Icons */}
-                {nodes.map((node, i) => {
+                {nodes.map((node, _i) => {
                     const IconComp = node.icon;
                     const active = node.completed;
 
@@ -150,7 +148,7 @@ export default function GPSCustodyTracker({ manufacturer, handoffs, directShip, 
 
             {/* Detailed Node Step Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
-                {nodes.map((node, idx) => {
+                {nodes.map((node, _idx) => {
                     const IconComp = node.icon;
                     return (
                         <div key={node.id} style={{

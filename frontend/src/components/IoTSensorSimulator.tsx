@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Activity, Flame, Snowflake, CheckCircle, RefreshCw, Send } from "lucide-react";
+import { Flame, Snowflake, Activity, CheckCircle } from "lucide-react";
 import { logTelemetryOnChain } from "../utils/soroban";
 import { useWallet } from "../context/WalletContext";
 

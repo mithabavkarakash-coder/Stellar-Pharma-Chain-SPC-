@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "../../context/WalletContext";
 import Navbar from "../../components/Navbar";
 import { invokeContract, getCustodyContractId } from "../../utils/soroban";
-import { Building, ShieldAlert, CheckCircle, RefreshCw, ShoppingBag } from "lucide-react";
+import { Building, ShieldAlert, RefreshCw, ShoppingBag } from "lucide-react";
 
 export default function PharmacyPortal() {
     const wallet = useWallet();

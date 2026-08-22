@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import { useWallet } from "../../context/WalletContext";
-import { Search, ShieldCheck, QrCode, ArrowRight, UserCheck, HeartHandshake } from "lucide-react";
+import { Search, QrCode, HeartHandshake } from "lucide-react";
 
 export default function CustomerPortal() {
     const wallet = useWallet();

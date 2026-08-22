@@ -1,7 +1,5 @@
-"use client";
-
 import React from "react";
-import { BarChart3, TrendingUp, ShieldAlert, PackageCheck, AlertOctagon, Activity, Pill } from "lucide-react";
+import { BarChart3, Activity } from "lucide-react";
 
 interface AnalyticsProps {
     totalProduced?: number;

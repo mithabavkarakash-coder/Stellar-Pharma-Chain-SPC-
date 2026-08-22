@@ -152,7 +152,6 @@ export async function getBatchOnChain(batchId: string): Promise<any> {
     console.log(`Querying get_batch on-chain for ${batchId}...`);
 
     try {
-        const server = getHorizonServer();
         // Load dummy account to get sequence number (needed for transaction format)
         // Or we can construct a transaction with sequence number 0
         const sourceAccount = new Account(dummyAddress, "0");

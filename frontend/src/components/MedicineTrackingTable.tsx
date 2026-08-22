@@ -1,8 +1,6 @@
-"use client";
-
 import React, { useState } from "react";
 import Link from "next/link";
-import { Search, Filter, ShieldCheck, ShieldAlert, Clock, ExternalLink, QrCode, ArrowRight } from "lucide-react";
+import { Search, ShieldAlert, QrCode, ArrowRight } from "lucide-react";
 
 export interface MedicineRecord {
     batch_id: string;
@@ -153,7 +151,7 @@ export default function MedicineTrackingTable({ batches, onViewGS1 }: MedicineTr
                                 </td>
                             </tr>
                         ) : (
-                            filteredBatches.map((b, i) => (
+                            filteredBatches.map((b, _i) => (
                                 <tr key={b.batch_id} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.06)", transition: "background 0.2s" }} className="hover:bg-slate-800/40">
                                     <td style={{ padding: "12px 14px" }}>
                                         <div style={{ fontWeight: 700, color: "#fff" }}>{b.drug_name}</div>

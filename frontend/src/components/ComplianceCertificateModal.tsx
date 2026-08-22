@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, Printer, ShieldCheck, FileCheck, CheckCircle2, AlertTriangle, ExternalLink } from "lucide-react";
+import React from "react";
+import { X, Printer, FileCheck, CheckCircle2, AlertTriangle } from "lucide-react";
 
-interface CertificateModalProps {
+interface ComplianceCertificateModalProps {
     isOpen: boolean;
     onClose: () => void;
     batchData: {
@@ -15,7 +15,7 @@ interface CertificateModalProps {
             manufacture_date: number;
             expiry_date: number;
             direct_ship: boolean;
-            is_recalled: boolean;
+            is_recalled: boolean | number;
             recalled_by?: string | null;
         };
         handoffs: any[];
@@ -25,10 +25,11 @@ interface CertificateModalProps {
     };
 }
 
-export default function ComplianceCertificateModal({ isOpen, onClose, batchData }: CertificateModalProps) {
+export default function ComplianceCertificateModal({ isOpen, onClose, batchData }: ComplianceCertificateModalProps) {
     if (!isOpen || !batchData || !batchData.batch) return null;
 
-    const { batch, handoffs, dispenses, anomalies = [], status = "AUTHENTIC" } = batchData;
+    const { batch, handoffs = [], dispenses: _dispenses = [], anomalies: _anomalies = [], status = "AUTHENTIC" } = batchData;
+
     const isVerified = status === "AUTHENTIC" && !batch.is_recalled;
     const certNumber = `DSCSA-CERT-${batch.batch_id}-${Math.floor(Date.now() / 1000).toString(16).toUpperCase()}`;
 

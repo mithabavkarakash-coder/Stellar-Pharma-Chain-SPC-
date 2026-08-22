@@ -76,7 +76,7 @@ export default function Home() {
             setBatchesList(list);
           }
         }
-      } catch (e) {
+      } catch (_e) {
         // Fallback to sample data
       }
     };

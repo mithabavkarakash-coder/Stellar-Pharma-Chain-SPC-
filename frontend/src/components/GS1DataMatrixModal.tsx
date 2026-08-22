@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { X, Printer, Download, ShieldCheck, QrCode, Copy, Check } from "lucide-react";
+import { X, Printer, QrCode, Copy, Check } from "lucide-react";
 
 interface GS1ModalProps {
     isOpen: boolean;

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { AlertTriangle, ShieldCheck, Thermometer, Droplets } from "lucide-react";
+import { Thermometer, Droplets } from "lucide-react";
 
 export interface TelemetryPoint {
     time: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { X, Camera, RefreshCw, AlertCircle } from "lucide-react";
+import { X, Camera, AlertCircle } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 
 interface CameraScannerModalProps {
@@ -13,7 +13,6 @@ interface CameraScannerModalProps {
 export default function CameraScannerModal({ isOpen, onClose, onScanSuccess }: CameraScannerModalProps) {
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const [scannerError, setScannerError] = useState<string | null>(null);
-    const [isScanning, setIsScanning] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -34,16 +33,14 @@ export default function CameraScannerModal({ isOpen, onClose, onScanSuccess }: C
                         onClose();
                     }).catch((e) => console.error("Error stopping scanner:", e));
                 },
-                (errorMessage) => {
+                (_errorMessage) => {
                     // Ignore transient frame scan errors
                 }
             ).then(() => {
-                setIsScanning(true);
                 setScannerError(null);
             }).catch((err) => {
                 console.warn("Camera access failed or unavailable:", err);
                 setScannerError("Camera unavailable or permission denied. Please enter Batch ID manually or check browser camera permissions.");
-                setIsScanning(false);
             });
 
             return () => {
@@ -56,7 +53,7 @@ export default function CameraScannerModal({ isOpen, onClose, onScanSuccess }: C
 
     const extractBatchId = (text: string): string => {
         if (!text) return "";
-        let clean = text.trim();
+        const clean = text.trim();
         // Check if full URL
         try {
             if (clean.startsWith("http://") || clean.startsWith("https://")) {
@@ -64,7 +61,7 @@ export default function CameraScannerModal({ isOpen, onClose, onScanSuccess }: C
                 const queryId = url.searchParams.get("id") || url.searchParams.get("lot");
                 if (queryId) return queryId;
             }
-        } catch (e) {}
+        } catch (_e) {}
 
         // Check if GS1 Element String with (10) Lot / Batch
         const gs1LotMatch = clean.match(/\(10\)([A-Z0-9_-]+)/i);
@@ -83,7 +80,7 @@ export default function CameraScannerModal({ isOpen, onClose, onScanSuccess }: C
             const batchId = extractBatchId(decodedText);
             onScanSuccess(batchId);
             onClose();
-        } catch (err: any) {
+        } catch (_err: any) {
             setScannerError("Could not decode QR code from uploaded image. Please try another clear image or enter Batch ID.");
         }
     };

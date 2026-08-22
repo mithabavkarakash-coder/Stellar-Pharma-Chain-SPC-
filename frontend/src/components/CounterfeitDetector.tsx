@@ -1,7 +1,5 @@
-"use client";
-
 import React from "react";
-import { ShieldCheck, ShieldAlert, CheckCircle2, XCircle, AlertTriangle, Key, Scan, Lock } from "lucide-react";
+import { ShieldCheck, ShieldAlert, CheckCircle2, XCircle } from "lucide-react";
 
 interface CounterfeitDetectorProps {
     batchId: string;
@@ -12,7 +10,7 @@ interface CounterfeitDetectorProps {
     manufacturer?: string;
 }
 
-export default function CounterfeitDetector({ batchId, isGenuine = true, isRecalled = false, isExpired = false, anomalies = [], manufacturer }: CounterfeitDetectorProps) {
+export default function CounterfeitDetector({ batchId, isGenuine = true, isRecalled = false, isExpired = false, anomalies = [], manufacturer: _manufacturer }: CounterfeitDetectorProps) {
     // 6 Counterfeit Verification Checks
     const checks = [
         {

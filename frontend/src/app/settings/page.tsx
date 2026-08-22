@@ -50,6 +50,7 @@ export default function ProfileSettings() {
         <section style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 0", textAlign: "center" }}>
           <div style={{ position: "relative", marginBottom: 16 }}>
             <div style={{ width: 96, height: 96, borderRadius: "50%", overflow: "hidden", border: "2px solid var(--border-glass)", padding: 4 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img 
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeyLXWDQXSD_n4yqPuGC93Rsft8qM0lf9bCXk0KV3CZDeDgGbgOdDBJUKAiTKCwLoZo0WqyrnkJDpTNp_RcgJLlbSXH4UFaEIHPlvIut_LW24AG_5Z37yVrs1YPhDSoq9ac58I4ExnCwdA75nR9QNl58snSXAsbbGTIYADpBmjD0YrpsVnQUSkdirCBwVqStZjjGs7FfZ8b1frUftQb9Rhjbmhpho3ZYrvhgAHQwwHuHqEj9bGQOr-b-w0r7DelYN3sZm1nQo1768" 
                 alt="Sarah Chen avatar" 

@@ -16,12 +16,9 @@ import {
   Factory,
   Truck,
   Globe,
-  Thermometer,
   Building,
-  Download,
   AlertTriangle,
-  FileCheck,
-  Camera
+  FileCheck
 } from "lucide-react";
 import { getBatchOnChain } from "../../utils/soroban";
 import GS1DataMatrixModal from "../../components/GS1DataMatrixModal";
@@ -187,7 +184,7 @@ function VerifyPortalContent() {
   };
 
   // Export Certificate JSON handler
-  const handleExportCertificate = () => {
+  const _handleExportCertificate = () => {
     if (!data) return;
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);

@@ -5,7 +5,7 @@ import { useWallet } from "../../context/WalletContext";
 import Navbar from "../../components/Navbar";
 import { invokeContract, getCustodyContractId } from "../../utils/soroban";
 import { xdr } from "@stellar/stellar-sdk";
-import { Truck, ShieldAlert, CheckCircle, RefreshCw, ArrowRightLeft } from "lucide-react";
+import { Truck, ShieldAlert, RefreshCw, ArrowRightLeft } from "lucide-react";
 
 export default function DistributorPortal() {
     const wallet = useWallet();

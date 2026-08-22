@@ -61,7 +61,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (roleType === "mock-manufacturer" && process.env.NEXT_PUBLIC_MANUFACTURER_SECRET_KEY) {
             try {
                 return Keypair.fromSecret(process.env.NEXT_PUBLIC_MANUFACTURER_SECRET_KEY);
-            } catch (e) {}
+            } catch (_e) {}
         }
 
         const secret = localStorage.getItem(`mock_secret_${roleType}`);
@@ -69,7 +69,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (secret) {
             try {
                 keypair = Keypair.fromSecret(secret);
-            } catch (e) {
+            } catch (_e) {
                 keypair = Keypair.random();
                 localStorage.setItem(`mock_secret_${roleType}`, keypair.secret());
             }
@@ -296,12 +296,13 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                             });
                         }
                     }
-                } catch (e) {}
+                } catch (_e) {}
             }
         };
 
         autoConnect();
-    }, [connect, fetchBalance]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fetchBalance]);
 
     return (
         <WalletContext.Provider
