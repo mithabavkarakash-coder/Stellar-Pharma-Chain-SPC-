@@ -18,11 +18,11 @@ interface NavbarProps {
     connected: boolean;
     address: string | null;
     balance: string | null;
-    role: "Manufacturer" | "Distributor" | "Pharmacy";
+    role: "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin";
     loading: boolean;
-    onConnect: (type: "freighter" | "albedo" | "mock-manufacturer" | "mock-distributor" | "mock-pharmacy") => void;
+    onConnect: (type: "freighter" | "albedo" | "mock-manufacturer" | "mock-distributor" | "mock-pharmacy" | "mock-admin" | "mock-customer") => void;
     onDisconnect: () => void;
-    onRoleChange: (role: "Manufacturer" | "Distributor" | "Pharmacy") => void;
+    onRoleChange: (role: "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin") => void;
 }
 
 export default function Navbar({
@@ -66,6 +66,8 @@ export default function Navbar({
                                     <option value="Manufacturer">Manufacturer</option>
                                     <option value="Distributor">Distributor</option>
                                     <option value="Pharmacy">Pharmacy</option>
+                                    <option value="Customer">Customer</option>
+                                    <option value="Admin">Admin</option>
                                 </select>
                             </div>
                         )}

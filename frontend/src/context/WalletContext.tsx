@@ -10,16 +10,16 @@ export interface WalletState {
     connected: boolean;
     address: string | null;
     balance: string | null;
-    role: "Manufacturer" | "Distributor" | "Pharmacy";
-    walletType: "freighter" | "albedo" | "mock-manufacturer" | "mock-distributor" | "mock-pharmacy" | null;
+    role: "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin";
+    walletType: "freighter" | "albedo" | "mock-manufacturer" | "mock-distributor" | "mock-pharmacy" | "mock-admin" | "mock-customer" | null;
     error: string | null;
     loading: boolean;
 }
 
 interface WalletContextType extends WalletState {
-    connect: (type: "freighter" | "albedo" | "mock-manufacturer" | "mock-distributor" | "mock-pharmacy") => Promise<void>;
+    connect: (type: "freighter" | "albedo" | "mock-manufacturer" | "mock-distributor" | "mock-pharmacy" | "mock-admin" | "mock-customer") => Promise<void>;
     disconnect: () => void;
-    setRole: (role: "Manufacturer" | "Distributor" | "Pharmacy") => void;
+    setRole: (role: "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin") => void;
     sendTestPayment: (amount: string, destination: string) => Promise<string>;
     refreshBalance: () => Promise<void>;
 }
@@ -57,10 +57,10 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const getOrCreateMockKeypair = async (roleType: string) => {
         if (typeof window === "undefined") return null;
         
-        // Use deployer/developer key as default for manufacturer for seamless testing
-        if (roleType === "mock-manufacturer") {
+        // Check for custom manufacturer dev key in environment variable if present, else generate dynamic keypair
+        if (roleType === "mock-manufacturer" && process.env.NEXT_PUBLIC_MANUFACTURER_SECRET_KEY) {
             try {
-                return Keypair.fromSecret("SAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663HQBRNCLU7UIUKH44ZTZJ");
+                return Keypair.fromSecret(process.env.NEXT_PUBLIC_MANUFACTURER_SECRET_KEY);
             } catch (e) {}
         }
 
@@ -92,15 +92,17 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return keypair;
     };
 
-    const connect = async (type: "freighter" | "albedo" | "mock-manufacturer" | "mock-distributor" | "mock-pharmacy") => {
+    const connect = async (type: "freighter" | "albedo" | "mock-manufacturer" | "mock-distributor" | "mock-pharmacy" | "mock-admin" | "mock-customer") => {
         setState((s) => ({ ...s, loading: true, error: null }));
         try {
             if (type.startsWith("mock-") || type === "albedo") {
                 // Determine mock role
-                let mappedRole: "Manufacturer" | "Distributor" | "Pharmacy" = "Manufacturer";
+                let mappedRole: "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin" = "Manufacturer";
                 if (type === "mock-distributor") mappedRole = "Distributor";
                 if (type === "mock-pharmacy") mappedRole = "Pharmacy";
-                if (type === "albedo") mappedRole = "Distributor"; // Albedo default mock
+                if (type === "mock-admin") mappedRole = "Admin";
+                if (type === "mock-customer") mappedRole = "Customer";
+                if (type === "albedo") mappedRole = "Distributor";
 
                 const keypair = await getOrCreateMockKeypair(type);
                 if (!keypair) throw new Error("Failed to initialize mock keys.");
@@ -200,7 +202,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
     };
 
-    const setRole = (role: "Manufacturer" | "Distributor" | "Pharmacy") => {
+    const setRole = (role: "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin") => {
         setState((s) => ({ ...s, role }));
     };
 
