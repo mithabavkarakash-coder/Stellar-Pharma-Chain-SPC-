@@ -14,15 +14,17 @@ import {
   QrCode 
 } from "lucide-react";
 
+import { Role } from "../types/pharma";
+
 interface NavbarProps {
     connected: boolean;
     address: string | null;
     balance: string | null;
-    role: "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin";
+    role: Role;
     loading: boolean;
     onConnect: (type: "freighter" | "albedo" | "mock-manufacturer" | "mock-distributor" | "mock-pharmacy" | "mock-admin" | "mock-customer") => void;
     onDisconnect: () => void;
-    onRoleChange: (role: "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin") => void;
+    onRoleChange: (role: Role) => void;
 }
 
 export default function Navbar({

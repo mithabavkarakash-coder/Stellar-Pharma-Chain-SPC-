@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useWallet } from "../../context/WalletContext";
 import Navbar from "../../components/Navbar";
+import ProtectedRoute from "../../components/ProtectedRoute";
 import { invokeContract, getRegistryContractId } from "../../utils/soroban";
+import { validateBatchId, validateStellarAddress } from "../../utils/validation";
 import { ShieldAlert, AlertTriangle, Lock, Key, OctagonAlert } from "lucide-react";
 
 export default function AdminPortal() {
@@ -48,7 +50,16 @@ export default function AdminPortal() {
 
     const handleQuarantine = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!wallet.address || !quarantineBatchId || !quarantineReason) return;
+        if (!wallet.address) return;
+        const vBatch = validateBatchId(quarantineBatchId);
+        if (!vBatch.valid) {
+            setStatusMsg({ type: "danger", text: vBatch.error || "Invalid Batch ID" });
+            return;
+        }
+        if (!quarantineReason.trim()) {
+            setStatusMsg({ type: "danger", text: "Quarantine reason is required." });
+            return;
+        }
         setLoading(true);
         setStatusMsg(null);
         try {
@@ -74,7 +85,12 @@ export default function AdminPortal() {
 
     const handleProposeAdmin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!wallet.address || !newAdminAddr) return;
+        if (!wallet.address) return;
+        const vAddr = validateStellarAddress(newAdminAddr);
+        if (!vAddr.valid) {
+            setStatusMsg({ type: "danger", text: vAddr.error || "Invalid Stellar Admin Address" });
+            return;
+        }
         setLoading(true);
         setStatusMsg(null);
         try {
@@ -98,7 +114,8 @@ export default function AdminPortal() {
     };
 
     return (
-        <div>
+        <ProtectedRoute allowedRoles={["Admin"]}>
+            <div>
             <Navbar
                 connected={wallet.connected}
                 address={wallet.address}
@@ -239,5 +256,6 @@ export default function AdminPortal() {
                 )}
             </main>
         </div>
+        </ProtectedRoute>
     );
 }

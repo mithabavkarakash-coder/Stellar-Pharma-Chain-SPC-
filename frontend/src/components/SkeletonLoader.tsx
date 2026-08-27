@@ -42,3 +42,13 @@ export function Spinner({ size = 20 }: { size?: number }) {
         />
     );
 }
+
+export default function SkeletonLoader({ count = 3 }: { count?: number }) {
+    return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {Array.from({ length: count }).map((_, i) => (
+                <SkeletonCard key={i} />
+            ))}
+        </div>
+    );
+}

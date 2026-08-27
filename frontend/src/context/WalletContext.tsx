@@ -4,13 +4,15 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { isConnected, getAddress, signTransaction, requestAccess } from "@stellar/freighter-api";
 import { Horizon, Networks, TransactionBuilder, Asset, Keypair, Operation } from "@stellar/stellar-sdk";
 
+import { Role } from "../types/pharma";
+
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
 
 export interface WalletState {
     connected: boolean;
     address: string | null;
     balance: string | null;
-    role: "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin";
+    role: Role;
     walletType: "freighter" | "albedo" | "mock-manufacturer" | "mock-distributor" | "mock-pharmacy" | "mock-admin" | "mock-customer" | null;
     error: string | null;
     loading: boolean;
@@ -19,7 +21,8 @@ export interface WalletState {
 interface WalletContextType extends WalletState {
     connect: (type: "freighter" | "albedo" | "mock-manufacturer" | "mock-distributor" | "mock-pharmacy" | "mock-admin" | "mock-customer") => Promise<void>;
     disconnect: () => void;
-    setRole: (role: "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin") => void;
+    setRole: (role: Role) => void;
+    hasPermission: (allowedRoles: Role[]) => boolean;
     sendTestPayment: (amount: string, destination: string) => Promise<string>;
     refreshBalance: () => Promise<void>;
 }
@@ -202,9 +205,21 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
     };
 
-    const setRole = (role: "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin") => {
+    const setRole = (role: Role) => {
+        if (typeof window !== "undefined") {
+            localStorage.setItem("stellar_pharma_role", role);
+        }
         setState((s) => ({ ...s, role }));
     };
+
+    const hasPermission = useCallback((allowedRoles: Role[]): boolean => {
+        if (!state.connected || !state.role) return false;
+        const normalizedUserRole = state.role === "Supplier" ? "Manufacturer" : state.role;
+        return allowedRoles.some((reqRole) => {
+            const normalizedReqRole = reqRole === "Supplier" ? "Manufacturer" : reqRole;
+            return normalizedReqRole === normalizedUserRole;
+        });
+    }, [state.connected, state.role]);
 
     const sendTestPayment = async (amount: string, destination: string): Promise<string> => {
         if (!state.address) throw new Error("Wallet not connected.");
@@ -311,6 +326,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 connect,
                 disconnect,
                 setRole,
+                hasPermission,
                 sendTestPayment,
                 refreshBalance,
             }}

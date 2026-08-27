@@ -1,4 +1,4 @@
-export type Role = "Manufacturer" | "Distributor" | "Pharmacy" | "Customer" | "Admin";
+export type Role = "Manufacturer" | "Supplier" | "Distributor" | "Pharmacy" | "Customer" | "Admin";
 
 export interface Batch {
     batch_id: string;

@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "../../context/WalletContext";
 import Navbar from "../../components/Navbar";
+import ProtectedRoute from "../../components/ProtectedRoute";
 import { invokeContract, getCustodyContractId } from "../../utils/soroban";
+import { validateBatchId, validateQuantity } from "../../utils/validation";
 import { Building, ShieldAlert, RefreshCw, ShoppingBag } from "lucide-react";
 
 export default function PharmacyPortal() {
@@ -86,8 +88,15 @@ export default function PharmacyPortal() {
             setError("Please connect your wallet first.");
             return;
         }
-        if (!batchId || !quantity) {
-            setError("All fields are required.");
+        const vBatch = validateBatchId(batchId);
+        if (!vBatch.valid) {
+            setError(vBatch.error || "Invalid Batch ID");
+            return;
+        }
+
+        const vQty = validateQuantity(quantity);
+        if (!vQty.valid) {
+            setError(vQty.error || "Invalid Quantity");
             return;
         }
 
@@ -126,7 +135,8 @@ export default function PharmacyPortal() {
     };
 
     return (
-        <div>
+        <ProtectedRoute allowedRoles={["Pharmacy"]}>
+            <div>
             <Navbar
                 connected={wallet.connected}
                 address={wallet.address}
@@ -285,5 +295,6 @@ export default function PharmacyPortal() {
                 )}
             </main>
         </div>
+        </ProtectedRoute>
     );
 }

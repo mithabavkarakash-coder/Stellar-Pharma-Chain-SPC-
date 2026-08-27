@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "../../context/WalletContext";
 import Navbar from "../../components/Navbar";
+import ProtectedRoute from "../../components/ProtectedRoute";
 import { invokeContract, getCustodyContractId } from "../../utils/soroban";
+import { validateBatchId, validateStellarAddress, validateQuantity } from "../../utils/validation";
 import { xdr } from "@stellar/stellar-sdk";
 import { Truck, ShieldAlert, RefreshCw, ArrowRightLeft } from "lucide-react";
 
@@ -71,8 +73,21 @@ export default function DistributorPortal() {
             setError("Please connect your wallet first.");
             return;
         }
-        if (!batchId || !pharmacyAddress || !quantity) {
-            setError("All fields are required.");
+        const vBatch = validateBatchId(batchId);
+        if (!vBatch.valid) {
+            setError(vBatch.error || "Invalid Batch ID");
+            return;
+        }
+
+        const vAddr = validateStellarAddress(pharmacyAddress);
+        if (!vAddr.valid) {
+            setError(vAddr.error || "Invalid Pharmacy Address");
+            return;
+        }
+
+        const vQty = validateQuantity(quantity);
+        if (!vQty.valid) {
+            setError(vQty.error || "Invalid Quantity");
             return;
         }
 
@@ -117,7 +132,8 @@ export default function DistributorPortal() {
     };
 
     return (
-        <div>
+        <ProtectedRoute allowedRoles={["Distributor"]}>
+            <div>
             <Navbar
                 connected={wallet.connected}
                 address={wallet.address}
@@ -344,5 +360,6 @@ export default function DistributorPortal() {
                 )}
             </main>
         </div>
+        </ProtectedRoute>
     );
 }

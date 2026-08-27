@@ -60,6 +60,10 @@ pub enum ApiError {
     NotFound,
     #[error("Rate limit exceeded. Please try again later.")]
     TooManyRequests,
+    #[error("Authentication required. Please connect an authorized wallet.")]
+    Unauthorized,
+    #[error("Access forbidden. Insufficient role permissions for this endpoint.")]
+    Forbidden,
 }
 
 impl IntoResponse for ApiError {
@@ -68,6 +72,8 @@ impl IntoResponse for ApiError {
             ApiError::Database(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
             ApiError::NotFound => (StatusCode::NOT_FOUND, "Batch not found".to_string()),
             ApiError::TooManyRequests => (StatusCode::TOO_MANY_REQUESTS, self.to_string()),
+            ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, self.to_string()),
+            ApiError::Forbidden => (StatusCode::FORBIDDEN, self.to_string()),
         };
         (status, Json(json!({ "error": error_message }))).into_response()
     }

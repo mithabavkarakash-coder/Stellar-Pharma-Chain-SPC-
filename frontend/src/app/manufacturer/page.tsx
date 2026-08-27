@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useWallet } from "../../context/WalletContext";
 import Navbar from "../../components/Navbar";
+import ProtectedRoute from "../../components/ProtectedRoute";
 import { invokeContract, getRegistryContractId, getCustodyContractId } from "../../utils/soroban";
+import { validateBatchId, validateQuantity, validateDateRange } from "../../utils/validation";
 import { PlusCircle, ShieldAlert, HelpCircle, QrCode } from "lucide-react";
 import GS1DataMatrixModal from "../../components/GS1DataMatrixModal";
 
@@ -35,8 +37,28 @@ export default function ManufacturerPortal() {
             setError("Please connect your wallet first.");
             return;
         }
-        if (!batchId || !drugName || !quantity || !manufactureDate || !expiryDate) {
-            setError("All fields are required.");
+        
+        // Input Validations
+        const vBatch = validateBatchId(batchId);
+        if (!vBatch.valid) {
+            setError(vBatch.error || "Invalid Batch ID");
+            return;
+        }
+
+        const vQty = validateQuantity(quantity);
+        if (!vQty.valid) {
+            setError(vQty.error || "Invalid Quantity");
+            return;
+        }
+
+        const vDates = validateDateRange(manufactureDate, expiryDate);
+        if (!vDates.valid) {
+            setError(vDates.error || "Invalid Date Range");
+            return;
+        }
+
+        if (!drugName.trim()) {
+            setError("Medicine name is required.");
             return;
         }
 
@@ -140,7 +162,8 @@ export default function ManufacturerPortal() {
     };
 
     return (
-        <div>
+        <ProtectedRoute allowedRoles={["Manufacturer", "Supplier"]}>
+            <div>
             <Navbar
                 connected={wallet.connected}
                 address={wallet.address}
@@ -352,5 +375,6 @@ export default function ManufacturerPortal() {
                 )}
             </main>
         </div>
+        </ProtectedRoute>
     );
 }
