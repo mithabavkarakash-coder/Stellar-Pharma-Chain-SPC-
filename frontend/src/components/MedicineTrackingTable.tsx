@@ -1,20 +1,13 @@
 import React, { useState } from "react";
 import Link from "next/link";
-import { Search, ShieldAlert, QrCode, ArrowRight } from "lucide-react";
+import { Search, QrCode, ArrowRight } from "lucide-react";
+import { Batch } from "@/types/pharma";
+import StatusBadge from "./ui/StatusBadge";
 
-export interface MedicineRecord {
-    batch_id: string;
-    drug_name: string;
-    manufacturer: string;
-    quantity: number;
-    manufacture_date: number;
-    expiry_date: number;
-    direct_ship: boolean;
-    is_recalled: boolean;
-    recalled_by?: string | null;
+export type MedicineRecord = Batch & {
     current_custodian?: string;
     current_role?: string;
-}
+};
 
 interface MedicineTrackingTableProps {
     batches: MedicineRecord[];
@@ -47,31 +40,15 @@ export default function MedicineTrackingTable({ batches, onViewGS1 }: MedicineTr
 
     const getExpiryBadge = (expEpoch: number, isRecalled: boolean) => {
         if (isRecalled) {
-            return (
-                <span className="badge badge-danger" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <ShieldAlert size={12} /> RECALLED
-                </span>
-            );
+            return <StatusBadge status="RECALLED" size="sm" />;
         }
         if (now > expEpoch) {
-            return (
-                <span style={{ padding: "3px 10px", borderRadius: 12, background: "rgba(239, 68, 68, 0.2)", color: "#f87171", fontSize: "0.72rem", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    🔴 Expired
-                </span>
-            );
+            return <StatusBadge status="EXPIRED" label="Expired" size="sm" />;
         }
         if ((expEpoch - now) < ninetyDays) {
-            return (
-                <span style={{ padding: "3px 10px", borderRadius: 12, background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", fontSize: "0.72rem", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    🟡 Expiring Soon
-                </span>
-            );
+            return <StatusBadge status="WARNING" label="Expiring Soon" size="sm" />;
         }
-        return (
-            <span style={{ padding: "3px 10px", borderRadius: 12, background: "rgba(16, 185, 129, 0.2)", color: "#34d399", fontSize: "0.72rem", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                🟢 Safe
-            </span>
-        );
+        return <StatusBadge status="AUTHENTIC" label="Safe" size="sm" />;
     };
 
     return (

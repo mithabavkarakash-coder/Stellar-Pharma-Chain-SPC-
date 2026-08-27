@@ -1,5 +1,6 @@
 import React from "react";
 import { ShieldCheck, ShieldAlert, CheckCircle2, XCircle } from "lucide-react";
+import StatusBadge from "./ui/StatusBadge";
 
 interface CounterfeitDetectorProps {
     batchId: string;
@@ -83,17 +84,11 @@ export default function CounterfeitDetector({ batchId, isGenuine = true, isRecal
                     </div>
                 </div>
 
-                <div style={{
-                    padding: "6px 14px",
-                    borderRadius: 20,
-                    background: isFullyGenuine ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                    color: isFullyGenuine ? "#34d399" : "#f87171",
-                    border: `1px solid ${isFullyGenuine ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.4)"}`,
-                    fontSize: "0.8rem",
-                    fontWeight: 800
-                }}>
-                    {isFullyGenuine ? "AUTHENTIC & VERIFIED" : `COUNTERFEIT THREAT (${passedCount}/6 PASSED)`}
-                </div>
+                <StatusBadge 
+                    status={isFullyGenuine ? "AUTHENTIC" : "COUNTERFEIT"} 
+                    label={isFullyGenuine ? "AUTHENTIC & VERIFIED" : `COUNTERFEIT THREAT (${passedCount}/6 PASSED)`}
+                    size="lg"
+                />
             </div>
 
             {/* 6 Threat Checks Grid */}

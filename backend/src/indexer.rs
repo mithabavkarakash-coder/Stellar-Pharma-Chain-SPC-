@@ -5,6 +5,7 @@ use stellar_xdr::curr::{ScVal, ScAddress, AccountId, PublicKey, Uint256, Limits,
 use stellar_strkey::{Strkey, ed25519, Contract};
 use tokio::sync::broadcast;
 use sqlx::sqlite::SqlitePool;
+use tracing::{info, warn, error};
 
 use crate::db::{self, BatchModel};
 
@@ -36,12 +37,12 @@ impl Indexer {
     }
 
     pub async fn run(self) -> anyhow::Result<()> {
-        println!("Starting event indexer...");
+        info!("Starting event indexer...");
         
         let mut last_ledger = match db::get_last_ledger(&self.pool).await {
             Ok(ledger) => ledger,
             Err(e) => {
-                eprintln!("Failed to get last ledger from DB: {}", e);
+                error!("Failed to get last ledger from DB: {}", e);
                 0
             }
         };
@@ -51,14 +52,14 @@ impl Indexer {
             if let Ok(latest) = self.get_latest_ledger_from_rpc().await {
                 // Start indexing from 1000 ledgers back to ensure we don't miss recent events
                 last_ledger = latest.saturating_sub(1000);
-                println!("No indexer state found in DB. Starting from ledger: {}", last_ledger);
+                info!("No indexer state found in DB. Starting from ledger: {}", last_ledger);
                 let _ = db::set_last_ledger(&self.pool, last_ledger).await;
             } else {
                 last_ledger = 1; // Fallback
-                println!("Failed to query latest ledger from RPC. Starting from ledger: 1");
+                warn!("Failed to query latest ledger from RPC. Starting from ledger: 1");
             }
         } else {
-            println!("Resuming indexing from ledger: {}", last_ledger);
+            info!("Resuming indexing from ledger: {}", last_ledger);
         }
 
         loop {
@@ -67,7 +68,7 @@ impl Indexer {
             let latest_ledger = match self.get_latest_ledger_from_rpc().await {
                 Ok(l) => l,
                 Err(e) => {
-                    eprintln!("Error getting latest ledger: {}", e);
+                    warn!("Error getting latest ledger: {}", e);
                     continue;
                 }
             };
@@ -77,18 +78,17 @@ impl Indexer {
             }
 
             let end_ledger = (last_ledger + 100).min(latest_ledger);
-            // println!("Scanning ledgers: {} - {}", last_ledger, end_ledger);
 
             match self.fetch_and_process_events(last_ledger, end_ledger).await {
                 Ok(count) => {
                     if count > 0 {
-                        println!("Processed {} pharma events up to ledger {}", count, end_ledger);
+                        info!("Processed {} pharma events up to ledger {}", count, end_ledger);
                     }
                     last_ledger = end_ledger;
                     let _ = db::set_last_ledger(&self.pool, last_ledger).await;
                 }
                 Err(e) => {
-                    eprintln!("Error indexing events from ledger {} to {}: {}", last_ledger, end_ledger, e);
+                    error!("Error indexing events from ledger {} to {}: {}", last_ledger, end_ledger, e);
                 }
             }
         }

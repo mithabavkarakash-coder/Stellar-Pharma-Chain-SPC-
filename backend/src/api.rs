@@ -52,6 +52,27 @@ impl RateLimiter {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum ApiError {
+    #[error("Database error: {0}")]
+    Database(#[from] anyhow::Error),
+    #[error("Batch not found")]
+    NotFound,
+    #[error("Rate limit exceeded. Please try again later.")]
+    TooManyRequests,
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> axum::response::Response {
+        let (status, error_message) = match &self {
+            ApiError::Database(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+            ApiError::NotFound => (StatusCode::NOT_FOUND, "Batch not found".to_string()),
+            ApiError::TooManyRequests => (StatusCode::TOO_MANY_REQUESTS, self.to_string()),
+        };
+        (status, Json(json!({ "error": error_message }))).into_response()
+    }
+}
+
 pub fn create_router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/api/batches", get(list_batches))
@@ -65,42 +86,27 @@ pub fn create_router(state: Arc<AppState>) -> Router {
 // Handler to list all batches
 async fn list_batches(
     State(state): State<Arc<AppState>>,
-) -> impl IntoResponse {
-    match db::get_batches(&state.pool).await {
-        Ok(list) => (StatusCode::OK, Json(list)).into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": e.to_string() })),
-        ).into_response(),
-    }
+) -> Result<Json<Vec<db::BatchModel>>, ApiError> {
+    let list = db::get_batches(&state.pool).await?;
+    Ok(Json(list))
 }
 
 // Handler to get batch details, handoffs and dispense history
 async fn get_batch_details(
     State(state): State<Arc<AppState>>,
     Path(batch_id): Path<String>,
-) -> impl IntoResponse {
-    match db::get_batch(&state.pool, &batch_id).await {
-        Ok(Some(batch)) => {
+) -> Result<Json<serde_json::Value>, ApiError> {
+    match db::get_batch(&state.pool, &batch_id).await? {
+        Some(batch) => {
             let handoffs = db::get_handoffs(&state.pool, &batch_id).await.unwrap_or_default();
             let dispenses = db::get_dispenses(&state.pool, &batch_id).await.unwrap_or_default();
-            (
-                StatusCode::OK,
-                Json(json!({
-                    "batch": batch,
-                    "handoffs": handoffs,
-                    "dispenses": dispenses
-                })),
-            ).into_response()
+            Ok(Json(json!({
+                "batch": batch,
+                "handoffs": handoffs,
+                "dispenses": dispenses
+            })))
         }
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": "Batch not found" })),
-        ).into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": e.to_string() })),
-        ).into_response(),
+        None => Err(ApiError::NotFound),
     }
 }
 
@@ -113,10 +119,7 @@ async fn verify_batch(
     // 1. Check rate limit (max 10 lookups per 60 seconds per IP)
     let ip = addr.ip().to_string();
     if !state.rate_limiter.check(ip).await {
-        return (
-            StatusCode::TOO_MANY_REQUESTS,
-            Json(json!({ "error": "Too many requests. Please try again later." })),
-        ).into_response();
+        return ApiError::TooManyRequests.into_response();
     }
 
     // 2. Fetch batch
