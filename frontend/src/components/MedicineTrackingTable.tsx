@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Search, QrCode, ArrowRight } from "lucide-react";
 import { Batch } from "@/types/pharma";
 import StatusBadge from "./ui/StatusBadge";
+import { calculateBatchExpiryStatus, formatSafeDate, formatSupplierAddress } from "../utils/batchUtils";
 
 export type MedicineRecord = Batch & {
     current_custodian?: string;
@@ -18,37 +19,28 @@ export default function MedicineTrackingTable({ batches, onViewGS1 }: MedicineTr
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "SAFE" | "EXPIRING" | "EXPIRED" | "RECALLED">("ALL");
 
-    const now = Math.floor(Date.now() / 1000);
-    const ninetyDays = 90 * 24 * 60 * 60;
-
-    // Filter logic
+    // Filter logic using safe batch calculation
     const filteredBatches = batches.filter((b) => {
-        const matchesSearch = b.drug_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              b.batch_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              b.manufacturer.toLowerCase().includes(searchTerm.toLowerCase());
+        const drugName = b.drug_name || "";
+        const batchId = b.batch_id || "";
+        const mfg = b.manufacturer || "";
+        const matchesSearch = drugName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                              batchId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                              mfg.toLowerCase().includes(searchTerm.toLowerCase());
         
-        const isExp = now > b.expiry_date;
-        const isExpiringSoon = !isExp && (b.expiry_date - now) < ninetyDays;
+        const calc = calculateBatchExpiryStatus(b);
 
-        if (statusFilter === "EXPIRED") return matchesSearch && isExp;
-        if (statusFilter === "EXPIRING") return matchesSearch && isExpiringSoon;
-        if (statusFilter === "SAFE") return matchesSearch && !isExp && !isExpiringSoon && !b.is_recalled;
+        if (statusFilter === "EXPIRED") return matchesSearch && calc.isExpired;
+        if (statusFilter === "EXPIRING") return matchesSearch && calc.isExpiringSoon;
+        if (statusFilter === "SAFE") return matchesSearch && calc.status === "ACTIVE";
         if (statusFilter === "RECALLED") return matchesSearch && b.is_recalled;
 
         return matchesSearch;
     });
 
-    const getExpiryBadge = (expEpoch: number, isRecalled: boolean) => {
-        if (isRecalled) {
-            return <StatusBadge status="RECALLED" size="sm" />;
-        }
-        if (now > expEpoch) {
-            return <StatusBadge status="EXPIRED" label="Expired" size="sm" />;
-        }
-        if ((expEpoch - now) < ninetyDays) {
-            return <StatusBadge status="WARNING" label="Expiring Soon" size="sm" />;
-        }
-        return <StatusBadge status="AUTHENTIC" label="Safe" size="sm" />;
+    const getExpiryBadge = (batch: MedicineRecord) => {
+        const calc = calculateBatchExpiryStatus(batch);
+        return <StatusBadge status={calc.badgeStatus} label={calc.label} size="sm" />;
     };
 
     return (
@@ -96,7 +88,7 @@ export default function MedicineTrackingTable({ batches, onViewGS1 }: MedicineTr
                                 }}
                             >
                                 {filter === "ALL" && "All"}
-                                {filter === "SAFE" && "🟢 Safe"}
+                                {filter === "SAFE" && "🟢 Active / Safe"}
                                 {filter === "EXPIRING" && "🟡 Expiring"}
                                 {filter === "EXPIRED" && "🔴 Expired"}
                                 {filter === "RECALLED" && "🚨 Recalled"}
@@ -112,11 +104,11 @@ export default function MedicineTrackingTable({ batches, onViewGS1 }: MedicineTr
                     <thead>
                         <tr style={{ background: "rgba(30, 41, 59, 0.6)", color: "var(--text-muted)", textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.5px", textAlign: "left" }}>
                             <th style={{ padding: "12px 14px", borderRadius: "8px 0 0 8px" }}>Medicine Name & ID</th>
-                            <th style={{ padding: "12px 14px" }}>Manufacturer</th>
+                            <th style={{ padding: "12px 14px" }}>Manufacturer / Supplier</th>
                             <th style={{ padding: "12px 14px" }}>Mfg Date</th>
                             <th style={{ padding: "12px 14px" }}>Expiry Date</th>
                             <th style={{ padding: "12px 14px" }}>Current Custodian</th>
-                            <th style={{ padding: "12px 14px" }}>Status</th>
+                            <th style={{ padding: "12px 14px" }}>Batch Status</th>
                             <th style={{ padding: "12px 14px", textAnchor: "end", borderRadius: "0 8px 8px 0" }}>Action</th>
                         </tr>
                     </thead>
@@ -128,20 +120,20 @@ export default function MedicineTrackingTable({ batches, onViewGS1 }: MedicineTr
                                 </td>
                             </tr>
                         ) : (
-                            filteredBatches.map((b, _i) => (
-                                <tr key={b.batch_id} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.06)", transition: "background 0.2s" }} className="hover:bg-slate-800/40">
+                            filteredBatches.map((b) => (
+                                <tr key={b.batch_id || Math.random().toString()} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.06)", transition: "background 0.2s" }} className="hover:bg-slate-800/40">
                                     <td style={{ padding: "12px 14px" }}>
-                                        <div style={{ fontWeight: 700, color: "#fff" }}>{b.drug_name}</div>
-                                        <code style={{ fontSize: "0.72rem", color: "#3b82f6" }}>#{b.batch_id}</code>
+                                        <div style={{ fontWeight: 700, color: "#fff" }}>{b.drug_name || "Unnamed Medicine"}</div>
+                                        <code style={{ fontSize: "0.72rem", color: "#3b82f6" }}>#{b.batch_id || "N/A"}</code>
                                     </td>
                                     <td style={{ padding: "12px 14px", fontFamily: "monospace", fontSize: "0.78rem" }}>
-                                        {b.manufacturer.slice(0, 8)}...{b.manufacturer.slice(-4)}
+                                        {formatSupplierAddress(b.manufacturer)}
                                     </td>
                                     <td style={{ padding: "12px 14px", color: "var(--text-muted)" }}>
-                                        {new Date(b.manufacture_date * 1000).toLocaleDateString()}
+                                        {formatSafeDate(b.manufacture_date)}
                                     </td>
                                     <td style={{ padding: "12px 14px" }}>
-                                        {new Date(b.expiry_date * 1000).toLocaleDateString()}
+                                        {formatSafeDate(b.expiry_date)}
                                     </td>
                                     <td style={{ padding: "12px 14px" }}>
                                         <span className="badge badge-blue" style={{ fontSize: "0.7rem" }}>
@@ -149,7 +141,7 @@ export default function MedicineTrackingTable({ batches, onViewGS1 }: MedicineTr
                                         </span>
                                     </td>
                                     <td style={{ padding: "12px 14px" }}>
-                                        {getExpiryBadge(b.expiry_date, b.is_recalled)}
+                                        {getExpiryBadge(b)}
                                     </td>
                                     <td style={{ padding: "12px 14px" }}>
                                         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -164,7 +156,7 @@ export default function MedicineTrackingTable({ batches, onViewGS1 }: MedicineTr
                                                 </button>
                                             )}
                                             <Link
-                                                href={`/verify?id=${encodeURIComponent(b.batch_id)}`}
+                                                href={`/verify?id=${encodeURIComponent(b.batch_id || "")}`}
                                                 className="btn btn-primary flex-gap"
                                                 style={{ padding: "4px 10px", fontSize: "0.75rem" }}
                                             >

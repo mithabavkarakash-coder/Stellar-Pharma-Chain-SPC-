@@ -18,9 +18,12 @@ import {
   Globe,
   Building,
   AlertTriangle,
-  FileCheck
+  FileCheck,
+  AlertOctagon
 } from "lucide-react";
 import { getBatchOnChain } from "../../utils/soroban";
+import { calculateBatchExpiryStatus, formatSafeDate, formatSupplierAddress } from "../../utils/batchUtils";
+import SkeletonLoader from "../../components/SkeletonLoader";
 import GS1DataMatrixModal from "../../components/GS1DataMatrixModal";
 import ComplianceCertificateModal from "../../components/ComplianceCertificateModal";
 import IoTSensorSimulator from "../../components/IoTSensorSimulator";
@@ -170,19 +173,6 @@ function VerifyPortalContent() {
     };
   }, []);
 
-  const formatDate = (epochSeconds: number) => {
-    return new Date(epochSeconds * 1000).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const isExpired = (expiryEpoch: number) => {
-    const currentNow = Math.floor(Date.now() / 1000);
-    return currentNow > expiryEpoch;
-  };
-
   // Export Certificate JSON handler
   const _handleExportCertificate = () => {
     if (!data) return;
@@ -251,22 +241,44 @@ function VerifyPortalContent() {
         </section>
 
         {loading && (
-          <div style={{ textAlign: "center", padding: "60px 0" }}>
-            <div className="spinner" />
-            <p style={{ color: "var(--text-muted)", marginTop: 12 }}>Retrieving audit trail...</p>
+          <div style={{ maxWidth: 800, margin: "40px auto" }}>
+            <SkeletonLoader count={4} />
           </div>
         )}
 
         {error && (
-          <div className="glass-card" style={{ maxWidth: 600, margin: "0 auto", textAlign: "center", border: "1px solid var(--color-danger)" }}>
-            <ShieldAlert style={{ width: 48, height: 48, stroke: "#ef4444", margin: "0 auto 16px" }} />
-            <h3>Verification Failed</h3>
-            <p style={{ color: "var(--text-muted)", margin: "8px 0 16px" }}>{error}</p>
-            <Link href="/" className="btn btn-secondary">Back to Dashboard</Link>
+          <div className="glass-card" style={{ maxWidth: 640, margin: "0 auto", textAlign: "center", border: "1px solid rgba(239,68,68,0.4)", padding: 32 }}>
+            <ShieldAlert style={{ width: 56, height: 56, stroke: "#ef4444", margin: "0 auto 16px" }} />
+            <h3 style={{ fontSize: "1.3rem", color: "#fff", marginBottom: 8 }}>Traceability Verification Failed</h3>
+            <p style={{ color: "var(--text-muted)", margin: "8px 0 20px", fontSize: "0.9rem" }}>{error}</p>
+            
+            <div style={{ background: "rgba(0,0,0,0.3)", padding: 16, borderRadius: 12, marginBottom: 24, textAlign: "left" }}>
+              <span className="form-label" style={{ fontSize: "0.75rem", margin: "0 0 8px 0" }}>TRY SEARCHING DEMO BATCH IDENTIFIERS:</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {["AX-7729-001", "MT-2023-F9", "PH-2024-001", "LP-9011-C2"].map((demoId) => (
+                  <button
+                    key={demoId}
+                    onClick={() => {
+                      setBatchId(demoId);
+                      router.push(`/verify?id=${encodeURIComponent(demoId)}`);
+                    }}
+                    className="btn btn-secondary"
+                    style={{ padding: "4px 10px", fontSize: "0.78rem" }}
+                  >
+                    #{demoId}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <Link href="/inventory" className="btn btn-primary">Go to Inventory</Link>
+              <Link href="/" className="btn btn-secondary">Back to Dashboard</Link>
+            </div>
           </div>
         )}
 
-        {data && (
+        {data && data.batch && (
           <div style={{ maxWidth: 1000, margin: "0 auto" }}>
             
             {/* Header Batch Info Card */}
@@ -275,11 +287,11 @@ function VerifyPortalContent() {
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span className="form-label" style={{ fontSize: "0.7rem", margin: 0 }}>BATCH AUDIT TRAIL</span>
-                  <span className="badge badge-blue">LIVE</span>
+                  <span className="badge badge-blue">ON-CHAIN AUDITED</span>
                 </div>
-                <h2 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#fff" }}>{data.batch.drug_name}</h2>
+                <h2 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#fff" }}>{data.batch.drug_name || "Prescription Medicine"}</h2>
                 <code style={{ background: "rgba(0,0,0,0.2)", padding: "2px 6px", borderRadius: 4, fontSize: "0.75rem", display: "inline-block", marginTop: 4, color: "var(--color-primary)" }}>
-                  {data.batch.batch_id}
+                  #{data.batch.batch_id}
                 </code>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
@@ -288,7 +300,12 @@ function VerifyPortalContent() {
                     <ShieldAlert style={{ width: 14, height: 14 }} />
                     RECALLED
                   </span>
-                ) : isExpired(data.batch.expiry_date) ? (
+                ) : data.batch.is_quarantined === 1 ? (
+                  <span className="badge badge-warning" style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", fontSize: "0.8rem", color: "#c084fc", background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.4)" }}>
+                    <AlertOctagon style={{ width: 14, height: 14 }} />
+                    QUARANTINED
+                  </span>
+                ) : calculateBatchExpiryStatus(data.batch).isExpired ? (
                   <span className="badge badge-warning" style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", fontSize: "0.8rem" }}>
                     <Clock style={{ width: 14, height: 14 }} />
                     EXPIRED
@@ -299,47 +316,59 @@ function VerifyPortalContent() {
                     AUTHENTICATED
                   </span>
                 )}
-                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 6 }}>Ledger status synchronized</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 6 }}>Soroban Testnet synchronized</span>
               </div>
             </div>
 
-            {/* Expired / Recalled Warning Alert banner */}
+            {/* Expired / Recalled / Quarantined Warning Alert banner */}
             {data.batch.is_recalled === 1 && (
               <div className="alert alert-danger" style={{ display: "flex", gap: 16, padding: 16, alignItems: "center", marginBottom: 24 }}>
                 <ShieldAlert style={{ width: 28, height: 28, flexShrink: 0 }} />
                 <div>
-                  <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>CRITICAL RECALL TRIGGERED</h3>
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>CRITICAL RECALL TRIGGERED ON-CHAIN</h3>
                   <p style={{ fontSize: "0.85rem", opacity: 0.9, marginTop: 2 }}>
-                    This batch has been marked as RECALLED by the drug manufacturer or regulator. Do not dispense, ingest, or transport.
+                    This batch was marked RECALLED on the Stellar ledger by {formatSupplierAddress(data.batch.recalled_by || data.batch.manufacturer)}. Do not dispense or ingest.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Feature 3: Counterfeit Medicine Security Matrix */}
+            {data.batch.is_quarantined === 1 && (
+              <div className="alert alert-warning" style={{ display: "flex", gap: 16, padding: 16, alignItems: "center", marginBottom: 24, background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.4)" }}>
+                <AlertOctagon style={{ width: 28, height: 28, flexShrink: 0, color: "#c084fc" }} />
+                <div>
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#e9d5ff" }}>BATCH QUARANTINE ACTIVE</h3>
+                  <p style={{ fontSize: "0.85rem", opacity: 0.9, marginTop: 2, color: "#e9d5ff" }}>
+                    Reason: {data.batch.quarantine_reason || "Temperature or custody anomaly under investigation."}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Counterfeit Security Matrix */}
             <div style={{ marginBottom: 24 }}>
               <CounterfeitDetector
                 batchId={data.batch.batch_id}
                 isGenuine={data.is_genuine !== false}
                 isRecalled={data.batch.is_recalled === 1}
-                isExpired={isExpired(data.batch.expiry_date)}
+                isExpired={calculateBatchExpiryStatus(data.batch).isExpired}
                 anomalies={data.anomalies || []}
                 manufacturer={data.batch.manufacturer}
               />
             </div>
 
-            {/* Feature 8: AI-Powered Risk Detection Engine */}
+            {/* AI Risk Detection Engine */}
             <div style={{ marginBottom: 24 }}>
               <AIRiskDetector
                 batchId={data.batch.batch_id}
                 anomalies={data.anomalies || []}
                 isRecalled={data.batch.is_recalled === 1}
-                isExpired={isExpired(data.batch.expiry_date)}
+                isExpired={calculateBatchExpiryStatus(data.batch).isExpired}
                 handoffCount={data.handoffs?.length || 0}
               />
             </div>
 
-            {/* WOW Feature Section: Interactive GPS Custody Tracker */}
+            {/* GPS Custody Tracker */}
             <div style={{ marginBottom: 24 }}>
               <GPSCustodyTracker
                 manufacturer={data.batch.manufacturer}
@@ -349,7 +378,7 @@ function VerifyPortalContent() {
               />
             </div>
 
-            {/* WOW Feature Section: Live Telemetry Chart & IoT Sensor Simulator */}
+            {/* Live Telemetry Chart & IoT Sensor Simulator */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, marginBottom: 24 }}>
               <LiveTelemetryChart data={telemetryHistory} batchId={data.batch.batch_id} />
               <IoTSensorSimulator batchId={data.batch.batch_id} onTelemetryAdded={handleTelemetryAdded} />
@@ -362,12 +391,12 @@ function VerifyPortalContent() {
               <div className="glass-card" style={{ flex: 1.5 }}>
                 <h3 style={{ fontSize: "1.2rem", display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
                   <Globe style={{ width: 20, height: 20, stroke: "var(--color-primary)" }} />
-                  <span>Verifiable Chain of Custody</span>
+                  <span>Verifiable Chain of Custody & Event History</span>
                 </h3>
 
                 <div className="verifiable-timeline">
                   
-                  {/* Step 1: Manufacturer Origin */}
+                  {/* Event 1: Batch Registration */}
                   <div className="timeline-step-container">
                     <div className="timeline-status-line" />
                     <div className="timeline-icon-wrapper success">
@@ -375,98 +404,153 @@ function VerifyPortalContent() {
                     </div>
                     <div className="timeline-step-content">
                       <div className="flex-between">
-                        <h4 style={{ color: "#fff", fontWeight: 700, margin: 0 }}>Manufacturer Batch Origin</h4>
-                        <span style={{ color: "var(--color-success)", fontSize: "0.75rem", fontWeight: 700 }}>VERIFIED</span>
+                        <h4 style={{ color: "#fff", fontWeight: 700, margin: 0 }}>Manufacturer Batch Origination</h4>
+                        <span style={{ color: "var(--color-success)", fontSize: "0.72rem", fontWeight: 700 }}>VERIFIED ON-CHAIN</span>
                       </div>
                       <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: 4 }}>
-                        Registered by Manufacturer Address: <code>{data.batch.manufacturer}</code>
+                        Registered by Manufacturer: <code>{formatSupplierAddress(data.batch.manufacturer)}</code>
                       </p>
-                      <div style={{ display: "flex", gap: 16, marginTop: 6, fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        <span>TS: {formatDate(data.batch.manufacture_date)}</span>
-                        <span>QTY: {data.batch.quantity} Units</span>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 6, fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        <span>Mfg Date: {formatSafeDate(data.batch.manufacture_date)}</span>
+                        <span>Expiry Date: {formatSafeDate(data.batch.expiry_date)}</span>
+                        <span>Quantity: {data.batch.quantity} Units</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Step 2: Handoff Transfers */}
-                  {data.handoffs.length === 0 ? (
+                  {/* Event 2: Quarantine (If Active) */}
+                  {data.batch.is_quarantined === 1 && (
+                    <div className="timeline-step-container">
+                      <div className="timeline-status-line" />
+                      <div className="timeline-icon-wrapper" style={{ borderColor: "#c084fc", color: "#c084fc" }}>
+                        <AlertOctagon style={{ width: 18, height: 18 }} />
+                      </div>
+                      <div className="timeline-step-content">
+                        <div className="flex-between">
+                          <h4 style={{ color: "#c084fc", fontWeight: 700, margin: 0 }}>Batch Quarantine Event Flagged</h4>
+                          <span className="badge badge-warning" style={{ fontSize: "0.7rem", color: "#c084fc" }}>QUARANTINED</span>
+                        </div>
+                        <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: 4 }}>
+                          Reason: {data.batch.quarantine_reason || "Isolation flag active."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Event 3: Recall (If Active) */}
+                  {data.batch.is_recalled === 1 && (
+                    <div className="timeline-step-container">
+                      <div className="timeline-status-line" />
+                      <div className="timeline-icon-wrapper" style={{ borderColor: "#ef4444", color: "#ef4444" }}>
+                        <ShieldAlert style={{ width: 18, height: 18 }} />
+                      </div>
+                      <div className="timeline-step-content">
+                        <div className="flex-between">
+                          <h4 style={{ color: "#f87171", fontWeight: 700, margin: 0 }}>Emergency Recall Issued</h4>
+                          <span className="badge badge-danger" style={{ fontSize: "0.7rem" }}>RECALLED</span>
+                        </div>
+                        <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: 4 }}>
+                          Recalled by: <code>{formatSupplierAddress(data.batch.recalled_by || data.batch.manufacturer)}</code>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Event 4: Handoff Transfers */}
+                  {(!data.handoffs || data.handoffs.length === 0) ? (
                     <div className="timeline-step-container">
                       <div className="timeline-status-line" />
                       <div className="timeline-icon-wrapper active">
                         <Truck style={{ width: 18, height: 18 }} />
                       </div>
                       <div className="timeline-step-content" style={{ opacity: 0.6 }}>
-                        <h4 style={{ fontWeight: 700 }}>No Custody Transfers Recorded</h4>
+                        <h4 style={{ fontWeight: 700, color: "#cbd5e1" }}>No Custody Handoffs Recorded</h4>
                         <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: 2 }}>
-                          This batch is currently still stored at the manufacturer origin.
+                          This batch is stored at manufacturer origin or waiting for distributor transfer.
                         </p>
                       </div>
                     </div>
                   ) : (
-                    data.handoffs.map((h: any, idx: number) => (
+                    data.handoffs.map((h: any, idx: number) => {
+                      const isFailedTx = h.status === "FAILED";
+                      return (
+                        <div className="timeline-step-container" key={idx}>
+                          <div className="timeline-status-line" />
+                          <div className="timeline-icon-wrapper active" style={{ borderColor: isFailedTx ? "#ef4444" : "var(--color-primary)" }}>
+                            <Truck style={{ width: 18, height: 18 }} />
+                          </div>
+                          <div className="timeline-step-content">
+                            <div className="flex-between">
+                              <h4 style={{ color: "#fff", fontWeight: 700, margin: 0 }}>Custody Handoff Transfer</h4>
+                              <span className={isFailedTx ? "badge badge-danger" : "badge badge-blue"} style={{ fontSize: "0.7rem" }}>
+                                {isFailedTx ? "FAILED TX" : h.new_role || "Custody Transfer"}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: 4 }}>
+                              <div>From: <code style={{ fontSize: "0.72rem" }}>{formatSupplierAddress(h.from_address)}</code></div>
+                              <div>To: <code style={{ fontSize: "0.72rem" }}>{formatSupplierAddress(h.to_address)}</code></div>
+                              <div style={{ marginTop: 2 }}>Volume: <strong>{h.quantity} units</strong></div>
+                            </div>
+
+                            <div className="flex-between" style={{ marginTop: 8, fontSize: "0.75rem" }}>
+                              <span style={{ color: "var(--text-muted)" }}>{formatSafeDate(h.timestamp)}</span>
+                              {h.transaction_hash && (
+                                <a 
+                                  href={`https://explorer.stellar.org/testnet/tx/${h.transaction_hash}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  style={{ color: isFailedTx ? "#f87171" : "var(--color-primary)", fontWeight: 600 }}
+                                >
+                                  {isFailedTx ? "Failed Tx Hash ↗" : "Explore Tx Hash ↗"}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* Event 5: Dispenses */}
+                  {(data.dispenses || []).map((d: any, idx: number) => {
+                    const isFailedTx = d.status === "FAILED";
+                    return (
                       <div className="timeline-step-container" key={idx}>
                         <div className="timeline-status-line" />
-                        <div className="timeline-icon-wrapper active">
-                          <Truck style={{ width: 18, height: 18 }} />
+                        <div className="timeline-icon-wrapper" style={{ borderColor: isFailedTx ? "#ef4444" : "var(--color-success)", color: isFailedTx ? "#ef4444" : "var(--color-success)" }}>
+                          <Building style={{ width: 18, height: 18 }} />
                         </div>
                         <div className="timeline-step-content">
                           <div className="flex-between">
-                            <h4 style={{ color: "#fff", fontWeight: 700, margin: 0 }}>Custody Handoff Recorded</h4>
-                            <span className="badge badge-blue" style={{ fontSize: "0.7rem" }}>{h.new_role}</span>
+                            <h4 style={{ color: isFailedTx ? "#f87171" : "var(--color-success)", fontWeight: 700, margin: 0 }}>
+                              {isFailedTx ? "Failed Patient Dispense Attempt" : "Units Dispensed to Patient"}
+                            </h4>
+                            <span className={isFailedTx ? "badge badge-danger" : "badge badge-green"} style={{ fontSize: "0.7rem" }}>
+                              {isFailedTx ? "FAILED TX" : "Dispensed"}
+                            </span>
                           </div>
                           <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: 4 }}>
-                            <div>From: <code style={{ fontSize: "0.7rem" }}>{h.from_address}</code></div>
-                            <div>To: <code style={{ fontSize: "0.7rem" }}>{h.to_address}</code></div>
-                            <div style={{ marginTop: 2 }}>Volume: <strong>{h.quantity} units</strong></div>
+                            <div>Pharmacy: <code style={{ fontSize: "0.72rem" }}>{formatSupplierAddress(d.pharmacy)}</code></div>
+                            <div>Dispensed: <strong>{d.quantity} units</strong></div>
+                            <div>Remaining Inventory: {d.remaining_quantity} units</div>
                           </div>
-
                           <div className="flex-between" style={{ marginTop: 8, fontSize: "0.75rem" }}>
-                            <span style={{ color: "var(--text-muted)" }}>{new Date(h.timestamp * 1000).toLocaleString()}</span>
-                            <a 
-                              href={`https://explorer.stellar.org/testnet/tx/${h.transaction_hash}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              style={{ color: "var(--color-primary)" }}
-                            >
-                              Explore Tx Hash
-                            </a>
+                            <span style={{ color: "var(--text-muted)" }}>{formatSafeDate(d.timestamp)}</span>
+                            {d.transaction_hash && (
+                              <a 
+                                href={`https://explorer.stellar.org/testnet/tx/${d.transaction_hash}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                style={{ color: isFailedTx ? "#f87171" : "var(--color-primary)", fontWeight: 600 }}
+                              >
+                                {isFailedTx ? "Failed Tx Hash ↗" : "Explore Tx Hash ↗"}
+                              </a>
+                            )}
                           </div>
                         </div>
                       </div>
-                    ))
-                  )}
-
-                  {/* Step 3: Dispenses */}
-                  {data.dispenses.map((d: any, idx: number) => (
-                    <div className="timeline-step-container" key={idx}>
-                      <div className="timeline-status-line" />
-                      <div className="timeline-icon-wrapper" style={{ borderColor: "var(--color-success)", color: "var(--color-success)" }}>
-                        <Building style={{ width: 18, height: 18 }} />
-                      </div>
-                      <div className="timeline-step-content">
-                        <div className="flex-between">
-                          <h4 style={{ color: "var(--color-success)", fontWeight: 700, margin: 0 }}>Units Dispensed to Patient</h4>
-                          <span className="badge badge-green" style={{ fontSize: "0.7rem" }}>Dispensed</span>
-                        </div>
-                        <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: 4 }}>
-                          <div>Pharmacy: <code style={{ fontSize: "0.7rem" }}>{d.pharmacy}</code></div>
-                          <div>Dispensed: <strong>{d.quantity} units</strong></div>
-                          <div>Rem. Balance: {d.remaining_quantity} units</div>
-                        </div>
-                        <div className="flex-between" style={{ marginTop: 8, fontSize: "0.75rem" }}>
-                          <span style={{ color: "var(--text-muted)" }}>{new Date(d.timestamp * 1000).toLocaleString()}</span>
-                          <a 
-                            href={`https://explorer.stellar.org/testnet/tx/${d.transaction_hash}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            style={{ color: "var(--color-primary)" }}
-                          >
-                            Explore Tx Hash
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                 </div>
               </div>
@@ -480,7 +564,7 @@ function VerifyPortalContent() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: "0.85rem" }}>
                     <div className="flex-between" style={{ borderBottom: "1px solid var(--border-glass)", paddingBottom: 8 }}>
                       <span style={{ color: "var(--text-muted)" }}>Expiration</span>
-                      <span style={{ fontWeight: 600, color: "#fff" }}>{formatDate(data.batch.expiry_date)}</span>
+                      <span style={{ fontWeight: 600, color: "#fff" }}>{formatSafeDate(data.batch.expiry_date)}</span>
                     </div>
                     <div className="flex-between" style={{ borderBottom: "1px solid var(--border-glass)", paddingBottom: 8 }}>
                       <span style={{ color: "var(--text-muted)" }}>Initial Count</span>

@@ -8,6 +8,7 @@ import {
   Wallet, 
   LogOut, 
   LayoutDashboard, 
+  Package,
   Clock, 
   Bell, 
   Settings, 
@@ -109,6 +110,10 @@ export default function Navbar({
                     <LayoutDashboard />
                     <span>Dashboard</span>
                 </Link>
+                <Link href="/inventory" className={`nav-tab-item ${pathname === "/inventory" ? "active" : ""}`} title="Inventory">
+                    <Package />
+                    <span>Inventory</span>
+                </Link>
                 <Link href="/verify" className={`nav-tab-item ${pathname === "/verify" ? "active" : ""}`} title="Timeline">
                     <Clock />
                     <span>Timeline</span>
@@ -133,9 +138,9 @@ export default function Navbar({
                     <LayoutDashboard />
                     <span>Dashboard</span>
                 </Link>
-                <Link href="/verify" className={`nav-tab-item ${pathname === "/verify" ? "active" : ""}`}>
-                    <Clock />
-                    <span>Timeline</span>
+                <Link href="/inventory" className={`nav-tab-item ${pathname === "/inventory" ? "active" : ""}`}>
+                    <Package />
+                    <span>Inventory</span>
                 </Link>
                 <Link href="/scan" className="nav-tab-item active-center" title="Scan QR">
                     <QrCode style={{ strokeWidth: 2.5 }} />

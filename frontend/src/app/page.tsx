@@ -11,6 +11,7 @@ import {
   PlusCircle, 
   Search, 
   QrCode, 
+  Package,
   ArrowRight,
   ShieldAlert,
   Globe
@@ -280,6 +281,10 @@ export default function Home() {
                     <Link href="/scan" className="btn btn-secondary flex-gap" style={{ background: "rgba(59, 130, 246, 0.2)", border: "1px solid rgba(59, 130, 246, 0.3)", padding: "10px 20px" }}>
                       <QrCode style={{ width: 16, height: 16 }} />
                       <span>Start Quick Scan</span>
+                    </Link>
+                    <Link href="/inventory" className="btn btn-primary flex-gap" style={{ padding: "10px 20px" }}>
+                      <Package style={{ width: 16, height: 16 }} />
+                      <span>Inventory Portal</span>
                     </Link>
                   </div>
                 </div>

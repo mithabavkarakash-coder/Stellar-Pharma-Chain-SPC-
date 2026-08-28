@@ -9,7 +9,9 @@ export type StatusVariant =
     | "RECALLED" 
     | "EXPIRED" 
     | "QUARANTINED" 
-    | "DIRECT_SHIP";
+    | "DIRECT_SHIP"
+    | "IN_STOCK"
+    | "LOW_STOCK";
 
 interface StatusBadgeProps {
     status: StatusVariant | string;
@@ -36,12 +38,14 @@ export default function StatusBadge({
     switch (normalizedStatus) {
         case "AUTHENTIC":
         case "VERIFIED":
+        case "IN_STOCK":
             bgColor = "rgba(16, 185, 129, 0.15)";
             textColor = "#34d399";
             borderColor = "rgba(16, 185, 129, 0.4)";
             Icon = ShieldCheck;
             break;
         case "WARNING":
+        case "LOW_STOCK":
             bgColor = "rgba(245, 158, 11, 0.15)";
             textColor = "#fbbf24";
             borderColor = "rgba(245, 158, 11, 0.4)";
