@@ -8,16 +8,14 @@
     "frontend"
   ],
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
-    "dev": "cd frontend && npm run dev",
-    "lint": "cd frontend && npm run lint",
-    "test": "cd frontend && npm run test"
+    "build": "npm run build --workspace=frontend",
+    "dev": "npm run dev --workspace=frontend",
+    "lint": "npm run lint --workspace=frontend",
+    "test": "npm run test --workspace=frontend"
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^16.1.0",
-    "dotenv": "^16.4.5"
-  },
-  "devDependencies": {
+    "dotenv": "^16.4.5",
     "next": "16.2.11",
     "react": "19.2.4",
     "react-dom": "19.2.4"
