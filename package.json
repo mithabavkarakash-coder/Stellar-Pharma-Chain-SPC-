@@ -4,6 +4,9 @@
   "description": "Soroban Contract Deployer Helper",
   "main": "deploy.js",
   "type": "module",
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
     "build": "cd frontend && npm install && npm run build",
     "dev": "cd frontend && npm run dev",
@@ -13,5 +16,10 @@
   "dependencies": {
     "@stellar/stellar-sdk": "^16.1.0",
     "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "next": "16.2.11",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   }
 }
