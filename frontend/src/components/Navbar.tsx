@@ -12,7 +12,9 @@ import {
   Clock, 
   Bell, 
   Settings, 
-  QrCode 
+  QrCode,
+  Building2,
+  History
 } from "lucide-react";
 
 import { Role } from "../types/pharma";
@@ -114,6 +116,14 @@ export default function Navbar({
                     <Package />
                     <span>Inventory</span>
                 </Link>
+                <Link href="/suppliers" className={`nav-tab-item ${pathname === "/suppliers" ? "active" : ""}`} title="Suppliers">
+                    <Building2 />
+                    <span>Suppliers</span>
+                </Link>
+                <Link href="/history" className={`nav-tab-item ${pathname === "/history" ? "active" : ""}`} title="Audit History">
+                    <History />
+                    <span>History</span>
+                </Link>
                 <Link href="/verify" className={`nav-tab-item ${pathname === "/verify" ? "active" : ""}`} title="Timeline">
                     <Clock />
                     <span>Timeline</span>
@@ -122,9 +132,10 @@ export default function Navbar({
                     <QrCode />
                     <span>Scan</span>
                 </Link>
-                <Link href="/alerts" className={`nav-tab-item ${pathname === "/alerts" ? "active" : ""}`} title="Alerts">
+                <Link href="/alerts" className={`nav-tab-item ${pathname === "/alerts" ? "active" : ""}`} title="Alerts" style={{ position: "relative" }}>
                     <Bell />
                     <span>Alerts</span>
+                    <span style={{ position: "absolute", top: 8, right: 12, width: 8, height: 8, borderRadius: "50%", background: "#ef4444" }} className="status-pulse" />
                 </Link>
                 <Link href="/settings" className={`nav-tab-item ${pathname === "/settings" ? "active" : ""}`} title="Settings">
                     <Settings />
@@ -142,12 +153,21 @@ export default function Navbar({
                     <Package />
                     <span>Inventory</span>
                 </Link>
+                <Link href="/suppliers" className={`nav-tab-item ${pathname === "/suppliers" ? "active" : ""}`}>
+                    <Building2 />
+                    <span>Suppliers</span>
+                </Link>
+                <Link href="/history" className={`nav-tab-item ${pathname === "/history" ? "active" : ""}`}>
+                    <History />
+                    <span>History</span>
+                </Link>
                 <Link href="/scan" className="nav-tab-item active-center" title="Scan QR">
                     <QrCode style={{ strokeWidth: 2.5 }} />
                 </Link>
-                <Link href="/alerts" className={`nav-tab-item ${pathname === "/alerts" ? "active" : ""}`}>
+                <Link href="/alerts" className={`nav-tab-item ${pathname === "/alerts" ? "active" : ""}`} style={{ position: "relative" }}>
                     <Bell />
                     <span>Alerts</span>
+                    <span style={{ position: "absolute", top: 4, right: 10, width: 7, height: 7, borderRadius: "50%", background: "#ef4444" }} className="status-pulse" />
                 </Link>
                 <Link href="/settings" className={`nav-tab-item ${pathname === "/settings" ? "active" : ""}`}>
                     <Settings />

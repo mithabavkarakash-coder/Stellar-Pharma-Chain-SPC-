@@ -25,12 +25,13 @@ export function validateBatchId(batchId: string): { valid: boolean; error?: stri
         return { valid: false, error: "Batch ID is required." };
     }
     const trimmed = batchId.trim();
-    if (trimmed.length < 3 || trimmed.length > 64) {
-        return { valid: false, error: "Batch ID must be between 3 and 64 characters." };
+    if (trimmed.length < 2 || trimmed.length > 128) {
+        return { valid: false, error: "Identifier length must be between 2 and 128 characters." };
     }
-    const regex = /^[A-Za-z0-9_-]+$/;
+    // Allow standard batch IDs as well as GS1 DataMatrix strings containing parentheses e.g. (01)00312345678906(10)AX-7729-001(17)261231
+    const regex = /^[A-Za-z0-9_\-\(\)]+$/;
     if (!regex.test(trimmed)) {
-        return { valid: false, error: "Batch ID can only contain letters, numbers, hyphens, and underscores." };
+        return { valid: false, error: "Identifier contains invalid characters. Only letters, numbers, hyphens, underscores, and GS1 parentheses () are permitted." };
     }
     return { valid: true };
 }

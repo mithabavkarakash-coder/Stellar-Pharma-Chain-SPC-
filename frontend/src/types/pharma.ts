@@ -1,5 +1,25 @@
 export type Role = "Manufacturer" | "Supplier" | "Distributor" | "Pharmacy" | "Customer" | "Admin";
 
+export type SupplierType = "Manufacturer" | "Distributor" | "Pharmacy";
+export type ComplianceStatus = "VERIFIED" | "PENDING_AUDIT" | "SUSPENDED";
+
+export interface Supplier {
+    id: string;
+    name: string;
+    address: string;
+    type: SupplierType;
+    license_number: string;
+    contact_email: string;
+    contact_phone: string;
+    location: string;
+    compliance_status: ComplianceStatus;
+    quality_rating: number; // 0.0 to 5.0
+    total_batches_handled: number;
+    active_shipments: number;
+    notes?: string;
+    created_at: number;
+}
+
 export interface Batch {
     batch_id: string;
     drug_name: string;

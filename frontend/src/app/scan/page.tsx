@@ -7,6 +7,9 @@ import { useWallet } from "../../context/WalletContext";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { Flashlight, Keyboard, RefreshCw, XCircle } from "lucide-react";
 
+import { parseGS1DataMatrix } from "../../utils/batchUtils";
+import { validateBatchId } from "../../utils/validation";
+
 export default function ScanPortal() {
   const wallet = useWallet();
   const router = useRouter();
@@ -14,6 +17,7 @@ export default function ScanPortal() {
   const [flashlightOn, setFlashlightOn] = useState(false);
   const [manualInputActive, setManualInputActive] = useState(false);
   const [manualId, setManualId] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [scannerActive, _setScannerActive] = useState(true);
   const [statusMessage, setStatusMessage] = useState("CAMERA_ACTIVE_WAITING_FOR_MARKER");
 
@@ -41,16 +45,9 @@ export default function ScanPortal() {
             scanner.clear().catch(console.error);
             scannerRef.current = null;
             
-            // Extract ID if URL
-            let extractedId = decodedText;
-            try {
-              if (decodedText.startsWith("http://") || decodedText.startsWith("https://")) {
-                const url = new URL(decodedText);
-                extractedId = url.searchParams.get("id") || decodedText;
-              }
-            } catch {
-              // Not a URL
-            }
+            // Parse using GS1 and URL parser
+            const parsed = parseGS1DataMatrix(decodedText);
+            const extractedId = parsed.batchId || decodedText;
 
             // Redirect
             setTimeout(() => {
@@ -81,9 +78,18 @@ export default function ScanPortal() {
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (manualId.trim()) {
-      router.push(`/verify?id=${encodeURIComponent(manualId.trim())}`);
+    setValidationError(null);
+
+    const parsed = parseGS1DataMatrix(manualId);
+    const targetId = parsed.batchId || manualId.trim();
+
+    const valResult = validateBatchId(targetId);
+    if (!valResult.valid) {
+      setValidationError(valResult.error || "Invalid Batch Identifier format.");
+      return;
     }
+
+    router.push(`/verify?id=${encodeURIComponent(targetId)}`);
   };
 
   const toggleFlashlight = () => {
@@ -178,17 +184,23 @@ export default function ScanPortal() {
                 </button>
               </div>
               <form onSubmit={handleManualSubmit}>
-                <label className="form-label">Batch Identifier</label>
+                <label className="form-label">Batch Identifier or GS1 Code</label>
                 <input
                   type="text"
-                  placeholder="e.g. AX-7729-001"
+                  placeholder="e.g. AX-7729-001 or (01)...(10)AX-7729-001"
                   className="form-control"
-                  style={{ marginBottom: 20 }}
+                  style={{ marginBottom: 12 }}
                   value={manualId}
-                  onChange={(e) => setManualId(e.target.value)}
+                  onChange={(e) => {
+                    setManualId(e.target.value);
+                    if (validationError) setValidationError(null);
+                  }}
                   required
                   autoFocus
                 />
+                {validationError && (
+                  <p style={{ color: "#ef4444", fontSize: "0.8rem", marginBottom: 16 }}>{validationError}</p>
+                )}
                 <div style={{ display: "flex", gap: 12 }}>
                   <button type="button" onClick={() => setManualInputActive(false)} className="btn btn-secondary" style={{ flex: 1 }}>
                     Cancel

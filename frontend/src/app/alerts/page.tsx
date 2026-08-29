@@ -1,99 +1,165 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import { useWallet } from "../../context/WalletContext";
-import { useRouter } from "next/navigation";
-import { CheckCheck } from "lucide-react";
+import { Batch, Supplier, Handoff } from "../../types/pharma";
+import { getSuppliers } from "../../utils/supplierUtils";
+import { 
+  generateInventoryAlerts, 
+  markAlertAsRead, 
+  markAllAlertsAsRead, 
+  clearReadAlerts, 
+  InventoryAlert, 
+  AlertSeverity, 
+  AlertCategory 
+} from "../../utils/alertUtils";
+import { 
+  ShieldAlert, 
+  AlertTriangle, 
+  CheckCheck, 
+  Filter, 
+  Search, 
+  Package, 
+  ExternalLink, 
+  CheckCircle2, 
+  RefreshCw, 
+  XCircle, 
+  Clock,
+  ShieldCheck,
+  AlertOctagon
+} from "lucide-react";
 
-export default function SecurityCenter() {
+export function SecurityCenterContent() {
   const wallet = useWallet();
   const router = useRouter();
-  const [_wsConnected, setWsConnected] = useState(false);
 
-  // Alerts state populated from mockup
-  const [alerts, setAlerts] = useState([
-    {
-      id: "SEC-882-X",
-      type: "CRITICAL",
-      title: "Suspicious Batch ID Detected",
-      description: "Anomalous blockchain signature identified in Batch #PH-2024-001. Multiple verification attempts from unauthorized nodes detected in regional warehouse B-12.",
-      time: "2m ago",
-      targetId: "PH-2024-001"
-    },
-    {
-      id: "LOG-441-T",
-      type: "WARNING",
-      title: "Temperature Excursion in Transit",
-      description: "Cold-chain sensor S-102 reported 8.4°C (Limit: 8.0°C) during transatlantic transport. Quality assurance protocols must be initiated upon arrival.",
-      time: "14m ago",
-      targetId: "IP-9901-B22"
-    },
-    {
-      id: "VRF-001-S",
-      type: "INFO",
-      title: "Verification Successful",
-      description: "Unit #9928-C has been successfully authenticated at Point-of-Care. Certificate of Authenticity generated and pushed to digital ledger.",
-      time: "45m ago",
-      targetId: "AX-7729-001"
-    }
-  ]);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [handoffs, setHandoffs] = useState<Handoff[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // WebSocket for real-time compliance alerts
-  useEffect(() => {
-    const wsUrl = process.env.NEXT_PUBLIC_BACKEND_WS_URL || "ws://localhost:8080/ws";
-    let ws: WebSocket;
-    let reconnectTimeout: NodeJS.Timeout;
+  // Filters & Controls
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSeverity, setSelectedSeverity] = useState<string>("ALL");
+  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-    const connectWs = () => {
-      ws = new WebSocket(wsUrl);
+  // Fetch live application state
+  const loadAlertData = () => {
+    setLoading(true);
+    const loadedSupps = getSuppliers();
+    setSuppliers(loadedSupps);
 
-      ws.onopen = () => {
-        setWsConnected(true);
-      };
-
-      ws.onclose = () => {
-        setWsConnected(false);
-        reconnectTimeout = setTimeout(connectWs, 5000);
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload.type === "BATCH_RECALLED") {
-            // Prepend new critical alert item
-            setAlerts((prev) => [
-              {
-                id: `REC-${payload.data.batch_id}`,
-                type: "CRITICAL",
-                title: "On-Chain Recall Warning",
-                description: `Emergency recall flag registered by manufacturer for batch ID: ${payload.data.batch_id}. Cease distribution immediately.`,
-                time: "Just now",
-                targetId: payload.data.batch_id
-              },
-              ...prev
-            ]);
-          }
-        } catch (e) {
-          console.error("Failed to parse compliance message:", e);
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+    fetch(`${backendUrl}/api/batches`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setBatches(data);
+        } else {
+          // Fallback rich sample data
+          setBatches([
+            {
+              batch_id: "AX-7729-001",
+              drug_name: "Amoxicillin Trihydrate 500mg",
+              manufacturer: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+              quantity: 5000,
+              manufacture_date: Math.floor(Date.now() / 1000) - 86400 * 30,
+              expiry_date: Math.floor(Date.now() / 1000) + 86400 * 365,
+              direct_ship: false,
+              is_recalled: false
+            },
+            {
+              batch_id: "MT-2023-F9",
+              drug_name: "Metformin XL 500mg Extended Release",
+              manufacturer: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+              quantity: 750, // Low stock
+              manufacture_date: Math.floor(Date.now() / 1000) - 86400 * 120,
+              expiry_date: Math.floor(Date.now() / 1000) + 86400 * 25, // Expiring soon (<30d)
+              direct_ship: false,
+              is_recalled: false
+            },
+            {
+              batch_id: "PH-2024-001",
+              drug_name: "Insulin Glargine Cold-Chain",
+              manufacturer: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+              quantity: 2500,
+              manufacture_date: Math.floor(Date.now() / 1000) - 86400 * 200,
+              expiry_date: Math.floor(Date.now() / 1000) - 86400 * 10, // Expired
+              direct_ship: true,
+              is_recalled: true // Recalled
+            }
+          ]);
         }
-      };
-    };
-
-    connectWs();
-
-    return () => {
-      if (ws) ws.close();
-      clearTimeout(reconnectTimeout);
-    };
-  }, []);
-
-  const handleReportIssue = (alertId: string) => {
-    alert(`Reporting protocol initiated for issue ${alertId}. Secure link established with QA supervisor.`);
+      })
+      .catch(() => {
+        // Fallback
+      })
+      .finally(() => setLoading(false));
   };
 
+  useEffect(() => {
+    loadAlertData();
+  }, []);
+
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Generate dynamic inventory event alerts
+  const allAlerts = useMemo(() => {
+    return generateInventoryAlerts(batches, handoffs, suppliers);
+  }, [batches, handoffs, suppliers]);
+
+  // Compute Metrics Breakdown
+  const metrics = useMemo(() => {
+    const criticalCount = allAlerts.filter(a => a.severity === "CRITICAL").length;
+    const highCount = allAlerts.filter(a => a.severity === "HIGH").length;
+    const mediumCount = allAlerts.filter(a => a.severity === "MEDIUM").length;
+    const unreadCount = allAlerts.filter(a => !a.isRead).length;
+
+    return { criticalCount, highCount, mediumCount, unreadCount, total: allAlerts.length };
+  }, [allAlerts]);
+
+  // Filtered Alerts List
+  const filteredAlerts = useMemo(() => {
+    return allAlerts.filter(alert => {
+      const matchesSearch = 
+        alert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        alert.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        alert.batchId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        alert.drugName.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesSeverity = selectedSeverity === "ALL" || alert.severity === selectedSeverity;
+      const matchesCategory = selectedCategory === "ALL" || alert.category === selectedCategory;
+      const matchesUnread = !showUnreadOnly || !alert.isRead;
+
+      return matchesSearch && matchesSeverity && matchesCategory && matchesUnread;
+    });
+  }, [allAlerts, searchQuery, selectedSeverity, selectedCategory, showUnreadOnly]);
+
   const handleMarkAllRead = () => {
-    alert("Priority alerts marked as read.");
+    const ids = allAlerts.map(a => a.id);
+    markAllAlertsAsRead(ids);
+    triggerToast("All inventory alerts marked as read.");
+    loadAlertData();
+  };
+
+  const handleClearRead = () => {
+    clearReadAlerts();
+    triggerToast("Cleared alert read states.");
+    loadAlertData();
+  };
+
+  const handleSingleRead = (alertId: string) => {
+    markAlertAsRead(alertId);
+    triggerToast("Alert marked as read.");
+    loadAlertData();
   };
 
   return (
@@ -110,99 +176,256 @@ export default function SecurityCenter() {
       />
 
       <main className="main-content-offset" style={{ padding: "80px 20px 96px" }}>
-        
-        {/* Header Title */}
-        <section style={{ margin: "20px 0 24px" }} className="flex-between">
-          <div>
-            <h2 style={{ fontSize: "2rem", color: "#fff", fontWeight: 800 }}>Security Center</h2>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Real-time supply chain integrity compliance monitoring</p>
-          </div>
-          <span className="form-label" style={{ fontSize: "0.75rem", margin: 0, color: "var(--text-muted)" }}>Last Sync: Active</span>
-        </section>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          
+          {/* Header Section */}
+          <div className="flex-between" style={{ flexWrap: "wrap", gap: 16, marginBottom: 28 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                <ShieldAlert style={{ width: 28, height: 28, stroke: "var(--color-danger)" }} />
+                <h1 style={{ fontSize: "2rem", fontWeight: 800, color: "#fff", margin: 0 }}>
+                  Security & Inventory Event Center
+                </h1>
+              </div>
+              <p style={{ color: "var(--text-muted)", margin: 0, fontSize: "0.9rem" }}>
+                Real-time inventory alerts derived dynamically from Soroban ledger batches, shelf-life expiration telemetry, and recall signals.
+              </p>
+            </div>
 
-        {/* Global Bento Status Cards */}
-        <section className="dashboard-metrics-grid" style={{ marginBottom: 32 }}>
-          <div className="glass-card metric-card">
-            <span className="form-label" style={{ fontSize: "0.75rem", margin: 0 }}>Active Threats</span>
-            <div className="metric-card-val" style={{ color: "var(--color-danger)" }}>
-              {alerts.filter((a) => a.type === "CRITICAL").length.toString().padStart(2, "0")}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={handleMarkAllRead} className="btn btn-secondary flex-gap" style={{ padding: "8px 14px", fontSize: "0.82rem" }}>
+                <CheckCheck style={{ width: 16, height: 16, color: "var(--color-primary)" }} />
+                <span>Mark All Read</span>
+              </button>
+              <button onClick={loadAlertData} className="btn btn-secondary" style={{ padding: "8px 12px" }} title="Refresh Alerts">
+                <RefreshCw style={{ width: 16, height: 16 }} />
+              </button>
             </div>
           </div>
-          <div className="glass-card metric-card">
-            <span className="form-label" style={{ fontSize: "0.75rem", margin: 0 }}>Verifications (24h)</span>
-            <div className="metric-card-val" style={{ color: "var(--color-primary)" }}>1,248</div>
-          </div>
-          <div className="glass-card metric-card">
-            <span className="form-label" style={{ fontSize: "0.75rem", margin: 0 }}>System Integrity</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
-              <span style={{ fontSize: "1.5rem", fontWeight: 700, color: "#fff" }}>Secure</span>
-              <div className="wallet-dot status-pulse" style={{ background: "var(--color-success)", position: "relative", top: 0, left: 0 }} />
+
+          {/* Toast Notification */}
+          {toastMessage && (
+            <div className="glass-card" style={{ marginBottom: 20, padding: "12px 18px", background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.4)", display: "flex", alignItems: "center", gap: 10 }}>
+              <CheckCircle2 style={{ width: 18, height: 18, color: "#34d399" }} />
+              <span style={{ color: "#34d399", fontSize: "0.88rem", fontWeight: 600 }}>{toastMessage}</span>
+            </div>
+          )}
+
+          {/* Global Metric Cards (4 Bento Cards) */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 28 }}>
+            <div className="glass-card" style={{ padding: 18, borderLeft: "4px solid #ef4444" }}>
+              <div className="flex-between" style={{ marginBottom: 8 }}>
+                <span className="form-label" style={{ fontSize: "0.75rem", margin: 0 }}>CRITICAL THREATS</span>
+                <AlertOctagon style={{ width: 18, height: 18, stroke: "#ef4444" }} />
+              </div>
+              <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "#f87171" }}>{metrics.criticalCount}</div>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Recalls & Expired Batches</span>
+            </div>
+
+            <div className="glass-card" style={{ padding: 18, borderLeft: "4px solid #f59e0b" }}>
+              <div className="flex-between" style={{ marginBottom: 8 }}>
+                <span className="form-label" style={{ fontSize: "0.75rem", margin: 0 }}>HIGH PRIORITY</span>
+                <AlertTriangle style={{ width: 18, height: 18, stroke: "#f59e0b" }} />
+              </div>
+              <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "#fbbf24" }}>{metrics.highCount}</div>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Quarantines & Expiring &lt;30d</span>
+            </div>
+
+            <div className="glass-card" style={{ padding: 18, borderLeft: "4px solid #3b82f6" }}>
+              <div className="flex-between" style={{ marginBottom: 8 }}>
+                <span className="form-label" style={{ fontSize: "0.75rem", margin: 0 }}>MEDIUM / LOW STOCK</span>
+                <Package style={{ width: 18, height: 18, stroke: "#3b82f6" }} />
+              </div>
+              <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "#60a5fa" }}>{metrics.mediumCount}</div>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>&lt;1,000 units stock warnings</span>
+            </div>
+
+            <div className="glass-card" style={{ padding: 18, borderLeft: "4px solid #10b981" }}>
+              <div className="flex-between" style={{ marginBottom: 8 }}>
+                <span className="form-label" style={{ fontSize: "0.75rem", margin: 0 }}>SYSTEM INTEGRITY</span>
+                <ShieldCheck style={{ width: 18, height: 18, stroke: "#10b981" }} />
+              </div>
+              <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#34d399", marginTop: 4 }}>OPERATIONAL</div>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Zero security breaches</span>
             </div>
           </div>
-        </section>
 
-        {/* Alerts Feed Section */}
-        <section style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div className="flex-between">
-            <h3 className="form-label" style={{ fontSize: "0.85rem", letterSpacing: "0.05em", color: "var(--text-secondary)" }}>PRIORITY COMPLIANCE ALERTS</h3>
-            <button onClick={handleMarkAllRead} className="flex-gap" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-primary)", fontSize: "0.8rem", fontWeight: 600 }}>
-              <CheckCheck style={{ width: 16, height: 16 }} />
-              <span>Mark All Read</span>
-            </button>
+          {/* Search & Filter Controls Toolbar */}
+          <div className="glass-card" style={{ padding: 16, marginBottom: 24, display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+            {/* Search Input */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 260 }}>
+              <Search style={{ width: 18, height: 18, stroke: "var(--text-muted)" }} />
+              <input
+                type="text"
+                placeholder="Search alerts by drug name, batch ID, or title..."
+                className="form-control"
+                style={{ border: "none", background: "transparent", padding: 0 }}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {/* Filter Dropdowns */}
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Filter style={{ width: 14, height: 14, stroke: "var(--text-muted)" }} />
+                <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>Severity:</span>
+                <select
+                  className="form-control"
+                  style={{ width: 130, padding: "4px 8px", fontSize: "0.8rem" }}
+                  value={selectedSeverity}
+                  onChange={(e) => setSelectedSeverity(e.target.value)}
+                >
+                  <option value="ALL">All Severities</option>
+                  <option value="CRITICAL">Critical</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="INFO">Info</option>
+                </select>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>Category:</span>
+                <select
+                  className="form-control"
+                  style={{ width: 140, padding: "4px 8px", fontSize: "0.8rem" }}
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                >
+                  <option value="ALL">All Categories</option>
+                  <option value="RECALL">Recalls</option>
+                  <option value="EXPIRED">Expired</option>
+                  <option value="QUARANTINE">Quarantine</option>
+                  <option value="EXPIRING_SOON">Expiring Soon</option>
+                  <option value="LOW_STOCK">Low Stock</option>
+                </select>
+              </div>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.8rem", color: "var(--text-muted)", cursor: "pointer", marginLeft: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={showUnreadOnly}
+                  onChange={(e) => setShowUnreadOnly(e.target.checked)}
+                />
+                <span>Unread Only ({metrics.unreadCount})</span>
+              </label>
+            </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {alerts.map((a, index) => {
-              const borderClass = a.type === "CRITICAL" ? "alert-side-border-danger" : a.type === "WARNING" ? "alert-side-border-warning" : "alert-side-border-success";
-              const badgeClass = a.type === "CRITICAL" ? "badge-danger" : a.type === "WARNING" ? "badge-warning" : "badge-green";
+          {/* Loading Indicator */}
+          {loading && (
+            <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
+              <p>Evaluating live inventory alerts...</p>
+            </div>
+          )}
 
-              return (
-                <div key={index} className={`glass-card ${borderClass}`} style={{ padding: 20, borderRadius: "0 12px 12px 0", background: "rgba(255,255,255,0.01)" }}>
-                  <div className="flex-between" style={{ marginBottom: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span className={`badge ${badgeClass}`}>{a.type}</span>
-                      <code style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>ID: {a.id}</code>
+          {/* Empty State */}
+          {!loading && filteredAlerts.length === 0 && (
+            <div className="glass-card" style={{ padding: 40, textAlign: "center" }}>
+              <ShieldCheck style={{ width: 44, height: 44, stroke: "#34d399", margin: "0 auto 12px" }} />
+              <h3 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#fff", marginBottom: 6 }}>No Active Alerts Matching Filter</h3>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", maxWidth: 450, margin: "0 auto" }}>
+                All pharmaceutical batches are currently operating within nominal quality thresholds.
+              </p>
+            </div>
+          )}
+
+          {/* Alerts Cards List */}
+          {!loading && filteredAlerts.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {filteredAlerts.map((alert) => {
+                const borderClass = 
+                  alert.severity === "CRITICAL" ? "alert-side-border-danger" : 
+                  alert.severity === "HIGH" ? "alert-side-border-warning" : 
+                  alert.severity === "MEDIUM" ? "alert-side-border-warning" : "alert-side-border-success";
+
+                const badgeClass = 
+                  alert.severity === "CRITICAL" ? "badge-danger" : 
+                  alert.severity === "HIGH" ? "badge-warning" : 
+                  alert.severity === "MEDIUM" ? "badge-warning" : "badge-green";
+
+                return (
+                  <div 
+                    key={alert.id} 
+                    className={`glass-card ${borderClass}`} 
+                    style={{ 
+                      padding: 20, 
+                      borderRadius: "0 12px 12px 0", 
+                      background: alert.isRead ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.03)",
+                      opacity: alert.isRead ? 0.75 : 1 
+                    }}
+                  >
+                    <div className="flex-between" style={{ marginBottom: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span className={`badge ${badgeClass}`}>{alert.severity}</span>
+                        <span className="badge badge-blue" style={{ fontSize: "0.68rem" }}>{alert.category.replace("_", " ")}</span>
+                        <code style={{ fontSize: "0.78rem", color: "var(--color-primary)", background: "rgba(0,0,0,0.2)", padding: "2px 6px", borderRadius: 4 }}>
+                          #{alert.batchId}
+                        </code>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{alert.timeFormatted}</span>
+                        {!alert.isRead && (
+                          <button
+                            onClick={() => handleSingleRead(alert.id)}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
+                            title="Mark as Read"
+                          >
+                            <CheckCheck style={{ width: 14, height: 14 }} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{a.time}</span>
+
+                    <h4 style={{ color: "#fff", fontSize: "1.1rem", marginBottom: 6, fontWeight: 700 }}>
+                      {alert.title}
+                    </h4>
+                    
+                    <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginBottom: 16, lineHeight: 1.5 }}>
+                      {alert.description}
+                    </p>
+
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                      <button
+                        onClick={() => router.push(alert.actionUrl)}
+                        className="btn btn-primary flex-gap"
+                        style={{ padding: "6px 14px", fontSize: "0.8rem" }}
+                      >
+                        <span>Audit Trail & Verification</span>
+                        <ExternalLink style={{ width: 14, height: 14 }} />
+                      </button>
+
+                      <Link
+                        href="/inventory"
+                        className="btn btn-secondary flex-gap"
+                        style={{ padding: "6px 14px", fontSize: "0.8rem" }}
+                      >
+                        <Package style={{ width: 14, height: 14 }} />
+                        <span>Manage Stock</span>
+                      </Link>
+                    </div>
+
                   </div>
-
-                  <h4 style={{ color: "#fff", fontSize: "1.1rem", marginBottom: 8 }}>{a.title}</h4>
-                  <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: 16, lineHeight: 1.5 }}>{a.description}</p>
-
-                  <div style={{ display: "flex", gap: 12 }}>
-                    <button onClick={() => handleReportIssue(a.id)} className="btn btn-primary" style={{ padding: "8px 16px", fontSize: "0.8rem" }}>
-                      Report Issue
-                    </button>
-                    <button onClick={() => router.push(`/verify?id=${a.targetId}`)} className="btn btn-secondary" style={{ padding: "8px 16px", fontSize: "0.8rem" }}>
-                      {a.type === "INFO" ? "Details" : "Audit Trail"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Visual Infrastructure Banner Card */}
-        <section style={{ marginTop: 32 }}>
-          <div className="glass-card" style={{ height: "220px", position: "relative", overflow: "hidden", display: "flex", alignItems: "flex-end" }}>
-            <div 
-              style={{ 
-                position: "absolute", inset: 0,
-                backgroundImage: `url('https://lh3.googleusercontent.com/aida-public/AB6AXuCn61KFJmwzU2DeoJz7J3sDi03tCbsnuk_qUuVRvnGeErIgnl2nl-QHLyVZNu4ib7_GdOG8MO6Q0xIW4b9RTxAoKFhvM4sd9lE1AnFkFm4aAwE5Nf5htc3yjiz9Lxz8OO2KbJ6ZWzvA9ptl5MsUBn6i9GF52dQbrfNlasK07jZVPD8pyYufmNGcptOZDYUV3iI0SDoxQ4ouWzR_-NQPGgnCuwyq_qLIdMNGEdtTO_lAJVCzvhg6zNp90Wn85Ga1UMcyaY9iyxTT5CE')`,
-                backgroundSize: "cover", backgroundPosition: "center",
-                opacity: 0.15, zIndex: 1
-              }}
-            />
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(10,14,26,0.9), transparent)", zIndex: 2 }} />
-            <div style={{ position: "relative", zIndex: 3, padding: 8 }}>
-              <h3 style={{ color: "#fff", fontSize: "1.2rem", marginBottom: 4 }}>Encrypted Infrastructure Active</h3>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", margin: 0 }}>End-to-end Soroban contract authentication is operational for all logistics legs.</p>
+                );
+              })}
             </div>
-          </div>
-        </section>
+          )}
 
+        </div>
       </main>
     </div>
+  );
+}
+
+export default function SecurityCenter() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: "100vh", background: "var(--bg-dark)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-bright)" }}>
+        <p>Loading Security Event Center...</p>
+      </div>
+    }>
+      <SecurityCenterContent />
+    </Suspense>
   );
 }

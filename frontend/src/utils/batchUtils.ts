@@ -187,3 +187,109 @@ export function calculateBatchExpiryStatus(
         badgeStatus: "AUTHENTIC"
     };
 }
+
+export interface GS1ParseResult {
+    batchId: string;
+    gtin?: string;
+    expiryRaw?: string;
+    originalInput: string;
+    isGS1: boolean;
+}
+
+/**
+ * Parses raw barcode input, URLs, or GS1 2D DataMatrix strings to extract the Batch ID.
+ * Examples:
+ * - "(01)00312345678906(10)AX-7729-001(17)261231" -> Batch ID: "AX-7729-001"
+ * - "https://stellar-pharma.app/verify?id=AX-7729-001" -> Batch ID: "AX-7729-001"
+ * - "AX-7729-001" -> Batch ID: "AX-7729-001"
+ */
+export function parseGS1DataMatrix(input: string): GS1ParseResult {
+    if (!input || typeof input !== "string") {
+        return { batchId: "", originalInput: "", isGS1: false };
+    }
+
+    const trimmed = input.trim();
+
+    // 1. Try URL parameter extraction
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        try {
+            const url = new URL(trimmed);
+            const idParam = url.searchParams.get("id");
+            if (idParam) {
+                return parseGS1DataMatrix(idParam);
+            }
+        } catch {
+            // Ignore URL parse error and continue
+        }
+    }
+
+    // 2. Try bracketed GS1 Application Identifiers: (01)... (10)BATCH_ID (17)EXP
+    const batchIdMatch = trimmed.match(/\(10\)([A-Za-z0-9_\-]+)/);
+    const gtinMatch = trimmed.match(/\(01\)(\d{14})/);
+    const expMatch = trimmed.match(/\(17\)(\d{6})/);
+
+    if (batchIdMatch) {
+        return {
+            batchId: batchIdMatch[1],
+            gtin: gtinMatch ? gtinMatch[1] : undefined,
+            expiryRaw: expMatch ? expMatch[1] : undefined,
+            originalInput: trimmed,
+            isGS1: true
+        };
+    }
+
+    // 3. Fallback: Return direct sanitized string
+    return {
+        batchId: trimmed,
+        originalInput: trimmed,
+        isGS1: false
+    };
+}
+
+export type VerificationState = 
+    | "VALID" 
+    | "INVALID_FORMAT" 
+    | "MISSING_RECORD" 
+    | "EXPIRED" 
+    | "RECALLED" 
+    | "QUARANTINED" 
+    | "NETWORK_UNAVAILABLE";
+
+export function determineVerificationState(
+    errorMsg: string | null,
+    batchData: any | null
+): VerificationState {
+    if (errorMsg) {
+        const lower = errorMsg.toLowerCase();
+        if (lower.includes("format") || lower.includes("invalid character") || lower.includes("identifier length")) {
+            return "INVALID_FORMAT";
+        }
+        if (lower.includes("not found") || lower.includes("unregistered") || lower.includes("counterfeit")) {
+            return "MISSING_RECORD";
+        }
+        if (lower.includes("failed to fetch") || lower.includes("network") || lower.includes("blockchain") || lower.includes("rpc")) {
+            return "NETWORK_UNAVAILABLE";
+        }
+        return "MISSING_RECORD";
+    }
+
+    if (!batchData || !batchData.batch) {
+        return "MISSING_RECORD";
+    }
+
+    const b = batchData.batch;
+    if (b.is_recalled === 1 || b.is_recalled === true) {
+        return "RECALLED";
+    }
+    if (b.is_quarantined === 1 || b.is_quarantined === true) {
+        return "QUARANTINED";
+    }
+
+    const expiryStatus = calculateBatchExpiryStatus(b);
+    if (expiryStatus.isExpired) {
+        return "EXPIRED";
+    }
+
+    return "VALID";
+}
+

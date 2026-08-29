@@ -19,10 +19,21 @@ import {
   Building,
   AlertTriangle,
   FileCheck,
-  AlertOctagon
+  AlertOctagon,
+  WifiOff,
+  AlertCircle,
+  CheckCircle2
 } from "lucide-react";
 import { getBatchOnChain } from "../../utils/soroban";
-import { calculateBatchExpiryStatus, formatSafeDate, formatSupplierAddress } from "../../utils/batchUtils";
+import { 
+  calculateBatchExpiryStatus, 
+  formatSafeDate, 
+  formatSupplierAddress,
+  parseGS1DataMatrix,
+  determineVerificationState,
+  VerificationState 
+} from "../../utils/batchUtils";
+import { validateBatchId } from "../../utils/validation";
 import SkeletonLoader from "../../components/SkeletonLoader";
 import GS1DataMatrixModal from "../../components/GS1DataMatrixModal";
 import ComplianceCertificateModal from "../../components/ComplianceCertificateModal";
@@ -32,6 +43,104 @@ import GPSCustodyTracker from "../../components/GPSCustodyTracker";
 import CameraScannerModal from "../../components/CameraScannerModal";
 import AIRiskDetector from "../../components/AIRiskDetector";
 import CounterfeitDetector from "../../components/CounterfeitDetector";
+
+const MOCK_DEMO_BATCHES: Record<string, any> = {
+  "AX-7729-001": {
+    is_genuine: true,
+    batch: {
+      batch_id: "AX-7729-001",
+      drug_name: "Amoxicillin Trihydrate 500mg",
+      manufacturer: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+      quantity: 5000,
+      manufacture_date: Math.floor(Date.now() / 1000) - 86400 * 60,
+      expiry_date: Math.floor(Date.now() / 1000) + 86400 * 300,
+      direct_ship: 0,
+      is_recalled: 0,
+      is_quarantined: 0
+    },
+    handoffs: [
+      {
+        from_address: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+        to_address: "GDISTRIB7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN8888",
+        new_role: "Distributor",
+        quantity: 5000,
+        timestamp: Math.floor(Date.now() / 1000) - 86400 * 45,
+        transaction_hash: "5fb9930f8b898127000000000000000000000000000000000000000000000001"
+      },
+      {
+        from_address: "GDISTRIB7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN8888",
+        to_address: "GPHARMACYUIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN9999",
+        new_role: "Pharmacy",
+        quantity: 2500,
+        timestamp: Math.floor(Date.now() / 1000) - 86400 * 15,
+        transaction_hash: "5fb9930f8b898127000000000000000000000000000000000000000000000002"
+      }
+    ],
+    dispenses: [
+      {
+        pharmacy: "GPHARMACYUIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN9999",
+        quantity: 50,
+        remaining_quantity: 2450,
+        timestamp: Math.floor(Date.now() / 1000) - 86400 * 2,
+        transaction_hash: "5fb9930f8b898127000000000000000000000000000000000000000000000003"
+      }
+    ],
+    anomalies: []
+  },
+  "EXP-2024-99": {
+    is_genuine: true,
+    batch: {
+      batch_id: "EXP-2024-99",
+      drug_name: "Paracetamol 650mg Systemic",
+      manufacturer: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+      quantity: 1200,
+      manufacture_date: Math.floor(Date.now() / 1000) - 86400 * 400,
+      expiry_date: Math.floor(Date.now() / 1000) - 86400 * 30,
+      direct_ship: 1,
+      is_recalled: 0,
+      is_quarantined: 0
+    },
+    handoffs: [],
+    dispenses: [],
+    anomalies: ["Batch past shelf life expiration date"]
+  },
+  "REC-9921-00": {
+    is_genuine: true,
+    batch: {
+      batch_id: "REC-9921-00",
+      drug_name: "Valganciclovir 450mg Film Coated",
+      manufacturer: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+      quantity: 800,
+      manufacture_date: Math.floor(Date.now() / 1000) - 86400 * 90,
+      expiry_date: Math.floor(Date.now() / 1000) + 86400 * 200,
+      direct_ship: 0,
+      is_recalled: 1,
+      recalled_by: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+      is_quarantined: 0
+    },
+    handoffs: [],
+    dispenses: [],
+    anomalies: ["Batch marked RECALLED on-chain by licensed manufacturer"]
+  },
+  "QUA-4410-02": {
+    is_genuine: true,
+    batch: {
+      batch_id: "QUA-4410-02",
+      drug_name: "Insulin Glargine 100U/ml Injectable",
+      manufacturer: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+      quantity: 1500,
+      manufacture_date: Math.floor(Date.now() / 1000) - 86400 * 45,
+      expiry_date: Math.floor(Date.now() / 1000) + 86400 * 180,
+      direct_ship: 0,
+      is_recalled: 0,
+      is_quarantined: 1,
+      quarantine_reason: "Cold-chain thermal excursion flagged (>12°C spike logged in transit)"
+    },
+    handoffs: [],
+    dispenses: [],
+    anomalies: ["Active quarantine hold flagged due to cold-chain breach"]
+  }
+};
 
 function VerifyPortalContent() {
   const wallet = useWallet();
@@ -76,30 +185,59 @@ function VerifyPortalContent() {
     setLoading(true);
     setError(null);
     setData(null);
+
+    // 1. Parse GS1 / URL
+    const parsed = parseGS1DataMatrix(id);
+    const targetId = parsed.batchId || id.trim();
+
+    // 2. Client-side input validation
+    const valResult = validateBatchId(targetId);
+    if (!valResult.valid) {
+      setError(valResult.error || "Identifier contains invalid characters or malformed format.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
-      const res = await fetch(`${backendUrl}/api/batches/${id}`);
+      const res = await fetch(`${backendUrl}/api/batches/${encodeURIComponent(targetId)}`);
       if (res.ok) {
         const json = await res.json();
         setData(json);
       } else {
-        const chainData = await getBatchOnChain(id);
+        const chainData = await getBatchOnChain(targetId);
         if (chainData) {
-          setData(chainData);
+          setData({ is_genuine: true, batch: chainData, handoffs: [], dispenses: [], anomalies: [] });
         } else {
-          setError("Batch not found on server or blockchain");
+          // Fallback check against interactive demo batches
+          const demoKey = targetId.toUpperCase();
+          if (MOCK_DEMO_BATCHES[demoKey] || MOCK_DEMO_BATCHES[targetId]) {
+            setData(MOCK_DEMO_BATCHES[demoKey] || MOCK_DEMO_BATCHES[targetId]);
+          } else {
+            setError("Batch not found on server or blockchain (Suspected Counterfeit)");
+          }
         }
       }
     } catch {
       try {
-        const chainData = await getBatchOnChain(id);
+        const chainData = await getBatchOnChain(targetId);
         if (chainData) {
-          setData(chainData);
+          setData({ is_genuine: true, batch: chainData, handoffs: [], dispenses: [], anomalies: [] });
         } else {
-          setError("Failed to fetch batch details");
+          const demoKey = targetId.toUpperCase();
+          if (MOCK_DEMO_BATCHES[demoKey] || MOCK_DEMO_BATCHES[targetId]) {
+            setData(MOCK_DEMO_BATCHES[demoKey] || MOCK_DEMO_BATCHES[targetId]);
+          } else {
+            setError("Batch not found on server or blockchain (Suspected Counterfeit)");
+          }
         }
       } catch {
-        setError("Failed to fetch batch details from blockchain");
+        const demoKey = targetId.toUpperCase();
+        if (MOCK_DEMO_BATCHES[demoKey] || MOCK_DEMO_BATCHES[targetId]) {
+          setData(MOCK_DEMO_BATCHES[demoKey] || MOCK_DEMO_BATCHES[targetId]);
+        } else {
+          setError("Failed to fetch batch details from blockchain RPC network");
+        }
       }
     } finally {
       setLoading(false);
@@ -246,34 +384,120 @@ function VerifyPortalContent() {
           </div>
         )}
 
-        {error && (
-          <div className="glass-card" style={{ maxWidth: 640, margin: "0 auto", textAlign: "center", border: "1px solid rgba(239,68,68,0.4)", padding: 32 }}>
-            <ShieldAlert style={{ width: 56, height: 56, stroke: "#ef4444", margin: "0 auto 16px" }} />
-            <h3 style={{ fontSize: "1.3rem", color: "#fff", marginBottom: 8 }}>Traceability Verification Failed</h3>
-            <p style={{ color: "var(--text-muted)", margin: "8px 0 20px", fontSize: "0.9rem" }}>{error}</p>
-            
+        {/* State 1: Invalid Format State */}
+        {error && determineVerificationState(error, data) === "INVALID_FORMAT" && (
+          <div className="glass-card" style={{ maxWidth: 680, margin: "0 auto", textAlign: "center", border: "1px solid rgba(245, 158, 11, 0.4)", padding: 32, background: "rgba(245, 158, 11, 0.05)" }}>
+            <AlertCircle style={{ width: 56, height: 56, stroke: "#f59e0b", margin: "0 auto 16px" }} />
+            <h3 style={{ fontSize: "1.4rem", color: "#fff", marginBottom: 8 }}>Invalid Identifier Format</h3>
+            <p style={{ color: "var(--text-secondary)", margin: "8px 0 20px", fontSize: "0.92rem" }}>
+              {error} Standard identifiers must contain letters, numbers, hyphens, or valid GS1 DataMatrix tags e.g. <code>(01)...(10)AX-7729-001</code>.
+            </p>
+
             <div style={{ background: "rgba(0,0,0,0.3)", padding: 16, borderRadius: 12, marginBottom: 24, textAlign: "left" }}>
-              <span className="form-label" style={{ fontSize: "0.75rem", margin: "0 0 8px 0" }}>TRY SEARCHING DEMO BATCH IDENTIFIERS:</span>
+              <span className="form-label" style={{ fontSize: "0.75rem", margin: "0 0 8px 0", color: "#f59e0b" }}>TRY DEMO IDENTIFIERS:</span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {["AX-7729-001", "MT-2023-F9", "PH-2024-001", "LP-9011-C2"].map((demoId) => (
+                {[
+                  { id: "AX-7729-001", label: "AX-7729-001 (Authentic)" },
+                  { id: "EXP-2024-99", label: "EXP-2024-99 (Expired)" },
+                  { id: "REC-9921-00", label: "REC-9921-00 (Recalled)" },
+                  { id: "QUA-4410-02", label: "QUA-4410-02 (Quarantined)" }
+                ].map((demo) => (
                   <button
-                    key={demoId}
+                    key={demo.id}
                     onClick={() => {
-                      setBatchId(demoId);
-                      router.push(`/verify?id=${encodeURIComponent(demoId)}`);
+                      setBatchId(demo.id);
+                      router.push(`/verify?id=${encodeURIComponent(demo.id)}`);
                     }}
                     className="btn btn-secondary"
-                    style={{ padding: "4px 10px", fontSize: "0.78rem" }}
+                    style={{ padding: "6px 12px", fontSize: "0.78rem" }}
                   >
-                    #{demoId}
+                    #{demo.label}
                   </button>
                 ))}
               </div>
             </div>
 
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-              <Link href="/inventory" className="btn btn-primary">Go to Inventory</Link>
+              <button 
+                onClick={() => {
+                  const cleaned = batchId.replace(/[^A-Za-z0-9_\-]/g, "");
+                  setBatchId(cleaned);
+                  if (cleaned) router.push(`/verify?id=${encodeURIComponent(cleaned)}`);
+                }} 
+                className="btn btn-primary"
+              >
+                Sanitize Input & Retry
+              </button>
               <Link href="/" className="btn btn-secondary">Back to Dashboard</Link>
+            </div>
+          </div>
+        )}
+
+        {/* State 2: Missing / Unregistered Record State (Suspected Counterfeit) */}
+        {error && determineVerificationState(error, data) === "MISSING_RECORD" && (
+          <div className="glass-card" style={{ maxWidth: 680, margin: "0 auto", border: "1px solid rgba(239, 68, 68, 0.5)", padding: 32, background: "rgba(239, 68, 68, 0.05)" }}>
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <ShieldAlert style={{ width: 60, height: 60, stroke: "#ef4444", margin: "0 auto 12px" }} />
+              <h3 style={{ fontSize: "1.5rem", color: "#f87171", fontWeight: 800 }}>Unregistered Batch / Counterfeit Warning</h3>
+              <p style={{ color: "var(--text-secondary)", marginTop: 6, fontSize: "0.95rem" }}>
+                Batch <code>#{batchId}</code> was <strong>NOT found</strong> on the Soroban blockchain or backend ledger state.
+              </p>
+            </div>
+
+            <div style={{ background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 12, padding: 16, marginBottom: 24 }}>
+              <h4 style={{ fontSize: "0.85rem", color: "#ef4444", fontWeight: 700, marginBottom: 8, textTransform: "uppercase" }}>Safety & Protocol Directives:</h4>
+              <ul style={{ paddingLeft: 20, color: "var(--text-secondary)", fontSize: "0.85rem", display: "flex", flexDirection: "column", gap: 6 }}>
+                <li>Do NOT dispense, sell, or administer this medication to patients.</li>
+                <li>Inspect physical packaging for altered lot numbers, print anomalies, or broken seals.</li>
+                <li>Quarantine the package immediately and file a regulatory compliance alert.</li>
+              </ul>
+            </div>
+
+            <div style={{ background: "rgba(0,0,0,0.3)", padding: 16, borderRadius: 12, marginBottom: 24 }}>
+              <span className="form-label" style={{ fontSize: "0.75rem", margin: "0 0 8px 0", color: "var(--color-primary)" }}>TRY DEMO VERIFICATION STATES:</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {[
+                  { id: "AX-7729-001", label: "AX-7729-001 (Authentic)" },
+                  { id: "EXP-2024-99", label: "EXP-2024-99 (Expired)" },
+                  { id: "REC-9921-00", label: "REC-9921-00 (Recalled)" },
+                  { id: "QUA-4410-02", label: "QUA-4410-02 (Quarantined)" }
+                ].map((demo) => (
+                  <button
+                    key={demo.id}
+                    onClick={() => {
+                      setBatchId(demo.id);
+                      router.push(`/verify?id=${encodeURIComponent(demo.id)}`);
+                    }}
+                    className="btn btn-secondary"
+                    style={{ padding: "6px 12px", fontSize: "0.78rem" }}
+                  >
+                    #{demo.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button onClick={handleReportIssue} className="btn btn-primary" style={{ background: "#ef4444", borderColor: "#ef4444" }}>
+                Report Counterfeit Flag
+              </button>
+              <Link href="/" className="btn btn-secondary">Return to Dashboard</Link>
+            </div>
+          </div>
+        )}
+
+        {/* State 3: Unavailable Record / RPC Connection Timeout */}
+        {error && determineVerificationState(error, data) === "NETWORK_UNAVAILABLE" && (
+          <div className="glass-card" style={{ maxWidth: 640, margin: "0 auto", textAlign: "center", border: "1px solid rgba(168, 85, 247, 0.4)", padding: 32, background: "rgba(168, 85, 247, 0.05)" }}>
+            <WifiOff style={{ width: 56, height: 56, stroke: "#c084fc", margin: "0 auto 16px" }} />
+            <h3 style={{ fontSize: "1.4rem", color: "#fff", marginBottom: 8 }}>Blockchain RPC Node Unavailable</h3>
+            <p style={{ color: "var(--text-secondary)", margin: "8px 0 20px", fontSize: "0.9rem" }}>{error}</p>
+            
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button onClick={() => fetchBatchDetails(batchId)} className="btn btn-primary">
+                Retry On-Chain Query
+              </button>
+              <Link href="/" className="btn btn-secondary">Return to Control Center</Link>
             </div>
           </div>
         )}
@@ -281,6 +505,49 @@ function VerifyPortalContent() {
         {data && data.batch && (
           <div style={{ maxWidth: 1000, margin: "0 auto" }}>
             
+            {/* Top Verification Status Banners */}
+            {data.batch.is_recalled === 1 ? (
+              <div className="alert alert-danger" style={{ display: "flex", gap: 16, padding: 18, alignItems: "center", marginBottom: 24, borderRadius: 14, border: "1px solid rgba(239, 68, 68, 0.5)" }}>
+                <ShieldAlert style={{ width: 32, height: 32, flexShrink: 0, color: "#f87171" }} />
+                <div>
+                  <h3 style={{ fontSize: "1.15rem", fontWeight: 800, color: "#fff" }}>CRITICAL RECALL TRIGGERED ON-CHAIN</h3>
+                  <p style={{ fontSize: "0.88rem", opacity: 0.95, marginTop: 2 }}>
+                    This batch was marked RECALLED on the Stellar ledger by {formatSupplierAddress(data.batch.recalled_by || data.batch.manufacturer)}. Do not dispense or ingest.
+                  </p>
+                </div>
+              </div>
+            ) : data.batch.is_quarantined === 1 ? (
+              <div className="alert alert-warning" style={{ display: "flex", gap: 16, padding: 18, alignItems: "center", marginBottom: 24, borderRadius: 14, background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.4)" }}>
+                <AlertOctagon style={{ width: 32, height: 32, flexShrink: 0, color: "#c084fc" }} />
+                <div>
+                  <h3 style={{ fontSize: "1.15rem", fontWeight: 800, color: "#e9d5ff" }}>BATCH QUARANTINE HOLD ACTIVE</h3>
+                  <p style={{ fontSize: "0.88rem", opacity: 0.95, marginTop: 2, color: "#e9d5ff" }}>
+                    Reason: {data.batch.quarantine_reason || "Temperature excursion or custody anomaly under investigation."}
+                  </p>
+                </div>
+              </div>
+            ) : calculateBatchExpiryStatus(data.batch).isExpired ? (
+              <div className="alert alert-warning" style={{ display: "flex", gap: 16, padding: 18, alignItems: "center", marginBottom: 24, borderRadius: 14, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.4)" }}>
+                <Clock style={{ width: 32, height: 32, flexShrink: 0, color: "#fbbf24" }} />
+                <div>
+                  <h3 style={{ fontSize: "1.15rem", fontWeight: 800, color: "#fef3c7" }}>EXPIRED MEDICINE DETECTED</h3>
+                  <p style={{ fontSize: "0.88rem", opacity: 0.95, marginTop: 2, color: "#fef3c7" }}>
+                    This batch expired on {formatSafeDate(data.batch.expiry_date)}. Dispensing expired pharmaceuticals is strictly prohibited.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="glass-card" style={{ display: "flex", gap: 16, padding: 18, alignItems: "center", marginBottom: 24, borderRadius: 14, background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.3)" }}>
+                <CheckCircle2 style={{ width: 32, height: 32, flexShrink: 0, color: "#10b981" }} />
+                <div>
+                  <h3 style={{ fontSize: "1.15rem", fontWeight: 800, color: "#34d399" }}>AUTHENTICATED & ON-CHAIN VERIFIED</h3>
+                  <p style={{ fontSize: "0.88rem", color: "var(--text-secondary)", marginTop: 2 }}>
+                    Authentic medicine record registered by verified manufacturer <code>{formatSupplierAddress(data.batch.manufacturer)}</code>.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Header Batch Info Card */}
             <div className="glass-card" style={{ padding: "20px 24px", marginBottom: 24, position: "relative", overflow: "hidden", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
               <div className="absolute top-0 left-0 h-full w-1" style={{ background: "var(--color-primary)" }} />
@@ -319,31 +586,6 @@ function VerifyPortalContent() {
                 <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 6 }}>Soroban Testnet synchronized</span>
               </div>
             </div>
-
-            {/* Expired / Recalled / Quarantined Warning Alert banner */}
-            {data.batch.is_recalled === 1 && (
-              <div className="alert alert-danger" style={{ display: "flex", gap: 16, padding: 16, alignItems: "center", marginBottom: 24 }}>
-                <ShieldAlert style={{ width: 28, height: 28, flexShrink: 0 }} />
-                <div>
-                  <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>CRITICAL RECALL TRIGGERED ON-CHAIN</h3>
-                  <p style={{ fontSize: "0.85rem", opacity: 0.9, marginTop: 2 }}>
-                    This batch was marked RECALLED on the Stellar ledger by {formatSupplierAddress(data.batch.recalled_by || data.batch.manufacturer)}. Do not dispense or ingest.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {data.batch.is_quarantined === 1 && (
-              <div className="alert alert-warning" style={{ display: "flex", gap: 16, padding: 16, alignItems: "center", marginBottom: 24, background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.4)" }}>
-                <AlertOctagon style={{ width: 28, height: 28, flexShrink: 0, color: "#c084fc" }} />
-                <div>
-                  <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#e9d5ff" }}>BATCH QUARANTINE ACTIVE</h3>
-                  <p style={{ fontSize: "0.85rem", opacity: 0.9, marginTop: 2, color: "#e9d5ff" }}>
-                    Reason: {data.batch.quarantine_reason || "Temperature or custody anomaly under investigation."}
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* Counterfeit Security Matrix */}
             <div style={{ marginBottom: 24 }}>

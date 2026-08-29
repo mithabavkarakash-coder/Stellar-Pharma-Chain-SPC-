@@ -19,6 +19,8 @@ import {
 import AnalyticsDashboard from "../components/AnalyticsDashboard";
 import MedicineTrackingTable, { MedicineRecord } from "../components/MedicineTrackingTable";
 import GS1DataMatrixModal from "../components/GS1DataMatrixModal";
+import { getSuppliers } from "../utils/supplierUtils";
+import { Supplier } from "../types/pharma";
 
 export default function Home() {
   const wallet = useWallet();
@@ -28,6 +30,10 @@ export default function Home() {
   const [searchId, setSearchId] = useState("");
   const [liveEvents, setLiveEvents] = useState<any[]>([]);
   const [_wsConnected, setWsConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Live Application Suppliers
+  const [suppliersList, setSuppliersList] = useState<Supplier[]>([]);
 
   // Registered Medicine Batches List
   const [batchesList, setBatchesList] = useState<MedicineRecord[]>([
@@ -45,8 +51,8 @@ export default function Home() {
     {
       batch_id: "MT-2023-F9",
       drug_name: "Metformin XL 500mg Extended Release",
-      manufacturer: "G0000000000000000000000000000000000000000000000000000001",
-      quantity: 12000,
+      manufacturer: "GBRPNCLU7UIUKH44ZTZJSAXN7RKODHQ24NMLHGVLFBMVGGIZ2LNN6663",
+      quantity: 850, // Low stock demo
       manufacture_date: Math.floor(Date.now() / 1000) - 86400 * 120,
       expiry_date: Math.floor(Date.now() / 1000) + 86400 * 45, // Expiring soon
       direct_ship: false,
@@ -67,7 +73,12 @@ export default function Home() {
   ]);
 
   useEffect(() => {
+    // Load suppliers
+    const supps = getSuppliers();
+    setSuppliersList(supps);
+
     const fetchBatches = async () => {
+      setLoading(true);
       try {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
         const res = await fetch(`${backendUrl}/api/batches`);
@@ -79,6 +90,8 @@ export default function Home() {
         }
       } catch (_e) {
         // Fallback to sample data
+      } finally {
+        setLoading(false);
       }
     };
     fetchBatches();
@@ -228,14 +241,12 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Feature 7: Analytics Dashboard */}
+        {/* Feature 7: Dynamic Analytics Dashboard */}
         <section style={{ marginBottom: 32 }}>
           <AnalyticsDashboard
-            totalProduced={48500}
-            totalSold={31200}
-            activeBatches={batchesList.length}
-            expiredCount={batchesList.filter(b => Math.floor(Date.now()/1000) > b.expiry_date).length}
-            counterfeitAttempts={alertsList.filter(a => a.type === "CRITICAL").length + 5}
+            batches={batchesList}
+            suppliers={suppliersList}
+            loading={loading}
           />
         </section>
 
@@ -249,6 +260,21 @@ export default function Home() {
             }}
           />
         </section>
+
+        {/* Empty State Banner if no batches registered */}
+        {!loading && batchesList.length === 0 && (
+          <section className="glass-card" style={{ marginBottom: 32, textAlign: "center", padding: 36, border: "1px dashed var(--border-focus)" }}>
+            <Package style={{ width: 48, height: 48, stroke: "var(--color-primary)", margin: "0 auto 12px" }} />
+            <h3 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fff", marginBottom: 6 }}>No Batches Registered in Ledger</h3>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", maxWidth: 500, margin: "0 auto 20px" }}>
+              Mint and record pharmaceutical batches on-chain to enable custody tracking, telemetry logging, and authenticity verification.
+            </p>
+            <Link href="/inventory" className="btn btn-primary flex-gap" style={{ display: "inline-flex" }}>
+              <PlusCircle style={{ width: 16, height: 16 }} />
+              <span>Register First Batch</span>
+            </Link>
+          </section>
+        )}
 
         {/* 2. Main Content Grid */}
         <div className="dashboard-grid">

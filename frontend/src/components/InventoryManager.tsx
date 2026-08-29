@@ -10,6 +10,7 @@ import GS1DataMatrixModal from "./GS1DataMatrixModal";
 import { invokeContract, getRegistryContractId, getCustodyContractId, flagQuarantineOnChain, releaseQuarantineOnChain } from "../utils/soroban";
 import { validateBatchId, validateQuantity, validateDateRange, validateStellarAddress } from "../utils/validation";
 import { calculateBatchExpiryStatus, formatSafeDate, formatSupplierAddress } from "../utils/batchUtils";
+import { getSupplierByAddress } from "../utils/supplierUtils";
 import { xdr } from "@stellar/stellar-sdk";
 import {
     Package,
@@ -747,11 +748,15 @@ export default function InventoryManager({ userRole, initialBatches }: Inventory
                                                 <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.8rem", color: "#cbd5e1" }}>
                                                     <Building size={14} style={{ color: "#94a3b8" }} />
                                                     <span title={item.manufacturer || ""}>
-                                                        {formatSupplierAddress(item.manufacturer)}
+                                                        {getSupplierByAddress(item.manufacturer)?.name ? (
+                                                            <strong style={{ color: "#fff" }}>{getSupplierByAddress(item.manufacturer)!.name}</strong>
+                                                        ) : (
+                                                            formatSupplierAddress(item.manufacturer)
+                                                        )}
                                                     </span>
                                                 </div>
                                                 <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>
-                                                    Mfg: {mfgDateStr}
+                                                    {formatSupplierAddress(item.manufacturer)} • Mfg: {mfgDateStr}
                                                 </div>
                                             </td>
 
@@ -760,8 +765,8 @@ export default function InventoryManager({ userRole, initialBatches }: Inventory
                                                 <span className="badge badge-blue" style={{ fontSize: "0.7rem", marginBottom: 4, display: "inline-block" }}>
                                                     {item.current_role || "Manufacturer"}
                                                 </span>
-                                                <div style={{ fontSize: "0.74rem", fontFamily: "monospace", color: "var(--text-muted)" }} title={item.current_custodian || ""}>
-                                                    {formatSupplierAddress(item.current_custodian)}
+                                                <div style={{ fontSize: "0.76rem", color: "#e2e8f0" }} title={item.current_custodian || ""}>
+                                                    {getSupplierByAddress(item.current_custodian)?.name || formatSupplierAddress(item.current_custodian)}
                                                 </div>
                                             </td>
 
