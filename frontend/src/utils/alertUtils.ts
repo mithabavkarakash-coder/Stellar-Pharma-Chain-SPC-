@@ -171,7 +171,7 @@ export function generateInventoryAlerts(
 
     // 4. Medicines Approaching Expiry (<30 days HIGH, <90 days MEDIUM)
     if (!expCalc.isExpired && expCalc.isExpiringSoon && !batch.is_recalled) {
-      const daysLeft = expCalc.daysRemaining;
+      const daysLeft = expCalc.daysRemaining ?? 0;
       const isUrgent = daysLeft <= 30;
       const alertId = `ALT-SOON-${batch.batch_id}`;
 

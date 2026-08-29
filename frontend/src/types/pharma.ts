@@ -33,6 +33,7 @@ export interface Batch {
     created_at?: number;
     is_quarantined?: boolean;
     quarantine_reason?: string | null;
+    remaining_quantity?: number;
 }
 
 export interface Handoff {
