@@ -14,11 +14,19 @@ Vercel is the recommended platform for hosting Next.js 15 applications. Follow t
 
 ### 2. Configure Monorepo Settings
 Because the Next.js application resides in the `frontend` subdirectory:
-- **Framework Preset**: Select `Next.js`.
+
+**Option A (Recommended - Automatic via root `vercel.json`):**
+- **Root Directory**: Leave as `.` (Repository Root).
+- **Framework Preset**: `Next.js`.
+- **Build Command**: `npm run build` (overridden in `vercel.json`).
+- **Output Directory**: `frontend/.next` (configured in `vercel.json`).
+
+**Option B (Vercel Subdirectory Setup):**
 - **Root Directory**: Set this to `frontend`.
-- **Build Command**: `next build` (Default).
-- **Output Directory**: `.next` (Default).
-- **Install Command**: `npm install` (Default).
+- **Framework Preset**: `Next.js`.
+- **Build Command**: `npm run build` (or `next build`).
+- **Output Directory**: `.next`.
+- **Install Command**: `npm install`.
 
 ### 3. Add Environment Variables
 Vercel requires the environment variables defined in [frontend/.env.example](file:///frontend/.env.example). Under **Environment Variables**, add the following keys:
