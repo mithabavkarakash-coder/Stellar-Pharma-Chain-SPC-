@@ -831,4 +831,37 @@ input:checked + .toggle-slider:before {
   }
 }
 
+/* Dashboard Header Styles */
+.dashboard-header-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(18, 24, 41, 0.9) 0%, rgba(10, 14, 26, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.dashboard-header-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6 0%, #10b981 50%, #6366f1 100%);
+}
+
+.branding-pill {
+  transition: var(--transition-smooth);
+}
+.branding-pill:hover {
+  background: rgba(16, 185, 129, 0.18) !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+}
+
+.user-profile-header-card {
+  transition: var(--transition-smooth);
+}
+.user-profile-header-card:hover {
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+
 

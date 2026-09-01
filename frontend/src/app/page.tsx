@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useWallet } from "../context/WalletContext";
 import Navbar from "../components/Navbar";
+import DashboardHeader from "../components/DashboardHeader";
 import { 
   Building, 
   Truck, 
@@ -205,15 +206,29 @@ export default function Home() {
 
       <main className="main-content-offset" style={{ padding: "80px 20px 96px" }}>
         
-        {/* Header Hero Section */}
-        <section style={{ margin: "20px 0 32px" }}>
-          <h1 style={{ fontSize: "2.5rem", fontWeight: 800, marginBottom: 8, lineHeight: 1.2 }}>
-            Trustless Pharma <span style={{ background: "linear-gradient(135deg, #3b82f6 0%, #10b981 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Control Center</span>
-          </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem", maxWidth: 800 }}>
-            Real-time pharmaceutical custody tracking, cold-chain temperature telemetry, and cryptographic verification on Stellar.
-          </p>
-        </section>
+        {/* Improved Dashboard Header */}
+        <DashboardHeader
+          connected={wallet.connected}
+          address={wallet.address}
+          balance={wallet.balance}
+          role={wallet.role}
+          loading={wallet.loading}
+          onConnect={wallet.connect}
+          onDisconnect={wallet.disconnect}
+          onRoleChange={wallet.setRole}
+          onRefresh={async () => {
+            try {
+              const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+              const res = await fetch(`${backendUrl}/api/batches`);
+              if (res.ok) {
+                const list = await res.json();
+                if (Array.isArray(list) && list.length > 0) {
+                  setBatchesList(list);
+                }
+              }
+            } catch (_e) {}
+          }}
+        />
 
         {/* 1. System Health Metrics (Bento Style) */}
         <section className="dashboard-metrics-grid">
