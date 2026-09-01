@@ -65,4 +65,14 @@ describe('DashboardHeader Component', () => {
     fireEvent.click(connectBtn);
     expect(mockProps.onConnect).toHaveBeenCalledWith('freighter');
   });
+
+  it('renders invigilator quick demo suite ribbon and opens audit diagnostic', () => {
+    render(<DashboardHeader {...mockProps} />);
+    expect(screen.getByText(/Invigilator Quick Demo Suite:/i)).toBeInTheDocument();
+    
+    const runAuditBtn = screen.getByText('Run On-Chain System Audit');
+    expect(runAuditBtn).toBeInTheDocument();
+    fireEvent.click(runAuditBtn);
+    expect(screen.getByText('System Diagnostic Audit')).toBeInTheDocument();
+  });
 });
