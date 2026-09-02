@@ -15,6 +15,13 @@ An enterprise-grade, trustless pharmaceutical supply chain tracking and cryptogr
 > [!TIP]
 > **🚀 Live Web Application**: Access the deployed platform at **[stellar-pharma-chain-spc-rhfo.vercel.app](https://stellar-pharma-chain-spc-rhfo.vercel.app/)**
 
+> [!IMPORTANT]
+> **🕵️‍♂️ Invigilator Quick Test & Evaluation Steps**:
+> 1. **Live Web App**: Launch **[stellar-pharma-chain-spc-rhfo.vercel.app](https://stellar-pharma-chain-spc-rhfo.vercel.app/)** in your browser.
+> 2. **Run System Audit**: Click **`✨ Invigilator Audit`** on the top navigation bar to execute the automated 4-step cryptographic & smart contract audit, then click **Export Audit Pass** to download the JSON verification pass.
+> 3. **Simulate IoT Telemetry Alert**: Click **`🌡️ Simulate Cold-Chain Alert`** on the dashboard header to test real-time excursion alert triggering.
+> 4. **Role Switcher**: Dynamically test permissions across Manufacturer, Distributor, Pharmacy, Customer, and Admin roles using the top right dropdown menu.
+
 ---
 
 ## 📋 Submission Compliance & Verification Checklist

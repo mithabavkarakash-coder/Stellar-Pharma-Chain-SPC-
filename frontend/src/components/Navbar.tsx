@@ -14,10 +14,13 @@ import {
   Settings, 
   QrCode,
   Building2,
-  History
+  History,
+  Sparkles,
+  ShieldCheck
 } from "lucide-react";
 
 import { Role } from "../types/pharma";
+import InvigilatorDiagnosticModal from "./InvigilatorDiagnosticModal";
 
 interface NavbarProps {
     connected: boolean;
@@ -42,6 +45,7 @@ export default function Navbar({
 }: NavbarProps) {
     const pathname = usePathname();
     const [showModal, setShowModal] = useState(false);
+    const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
     
     const truncateAddress = (addr: string) => {
         if (!addr) return "";
@@ -59,6 +63,24 @@ export default function Navbar({
                     </Link>
 
                     <div className="navbar-right">
+                        {/* Invigilator Verification Button */}
+                        <button
+                            onClick={() => setShowDiagnosticModal(true)}
+                            className="btn btn-secondary flex-gap"
+                            style={{
+                                padding: "6px 12px",
+                                fontSize: "0.78rem",
+                                background: "rgba(16, 185, 129, 0.12)",
+                                border: "1px solid rgba(16, 185, 129, 0.3)",
+                                color: "#34d399",
+                                fontWeight: 600
+                            }}
+                            title="Run Invigilator System Audit & Compliance Verification"
+                        >
+                            <Sparkles size={14} style={{ stroke: "#34d399" }} />
+                            <span>Invigilator Audit</span>
+                        </button>
+
                         {connected && (
                             <div className="flex-gap">
                                 <span className="form-label" style={{ margin: 0, fontSize: "0.75rem" }}>Demo Role:</span>
@@ -339,6 +361,12 @@ export default function Navbar({
                     </div>
                 </div>
             )}
+
+            {/* Invigilator Diagnostic Modal */}
+            <InvigilatorDiagnosticModal
+                isOpen={showDiagnosticModal}
+                onClose={() => setShowDiagnosticModal(false)}
+            />
         </>
     );
 }

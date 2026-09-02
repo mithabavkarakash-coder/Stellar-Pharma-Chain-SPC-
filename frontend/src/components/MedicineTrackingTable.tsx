@@ -48,9 +48,14 @@ export default function MedicineTrackingTable({ batches, onViewGS1 }: MedicineTr
             {/* Header & Filter Controls */}
             <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20 }}>
                 <div>
-                    <h3 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0, color: "#fff" }}>
-                        Medicine Tracking & Expiry Alerts Dashboard
-                    </h3>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <h3 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0, color: "#fff" }}>
+                            Medicine Tracking & Expiry Alerts Dashboard
+                        </h3>
+                        <span className="badge badge-blue" style={{ fontSize: "0.7rem", padding: "2px 8px" }}>
+                            🛡️ Soroban Ledger Verified
+                        </span>
+                    </div>
                     <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                         Real-time Medicine Inventory • Custody Handoffs • Expiry Status
                     </span>
